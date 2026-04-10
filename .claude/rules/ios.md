@@ -1,3 +1,13 @@
+---
+paths:
+  - "**/*.swift"
+  - "**/Package.swift"
+  - "**/*.xcodeproj/**"
+  - "**/*.xcworkspace/**"
+  - "**/*.xcdatamodeld/**"
+  - "**/Info.plist"
+---
+
 # iOS / Swift Development Standards
 
 Decisions, constraints, and non-negotiable rules for iOS/macOS/multiplatform Swift projects.
