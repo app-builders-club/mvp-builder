@@ -1,31 +1,6 @@
 # Code Quality Standards
 
-## Code Review
-
-### Only Flag High-Signal Issues (confidence ≥ 80)
-
-**Flag:**
-- Code that won't compile/parse (syntax, types, missing imports)
-- Logic errors producing wrong results regardless of inputs
-- Explicit CLAUDE.md violations — quote the exact rule
-- Security vulnerabilities in changed code
-- Race conditions, memory leaks, null/undefined bugs
-
-**Never flag:**
-- Pre-existing issues outside the diff
-- Code style or subjective quality concerns
-- Potential issues depending on specific inputs/state
-- Issues a linter will catch
-- General coverage concerns unless CLAUDE.md requires it
-- Issues silenced by lint-ignore comments
-- Pedantic nitpicks a senior engineer would skip
-
-False positive = eroded trust. When uncertain — don't flag.
-
-### Review Scope
-- Default scope: `git diff` (unstaged changes)
-- Review only changed code — don't chase issues outside the diff
-- PR title/description = author intent context
+Cross-platform standards. Platform rules (ios.md, frontend.md, backend.md) take precedence for platform-specific concerns.
 
 ## Error Handling
 
@@ -91,12 +66,3 @@ False positive = eroded trust. When uncertain — don't flag.
 - Invariants enforced only through documentation
 - External code responsible for maintaining type invariants
 - Missing validation at construction boundaries
-
-## Verification Order
-
-Every delivery must pass in this sequence:
-```
-build → types → lint → tests
-```
-
-Console errors = 0, failed network requests = 0.
