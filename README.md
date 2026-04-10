@@ -49,8 +49,8 @@ FR-XXX → TEST-XXX → IMPL-XXX → CHK → REV
 **Feedback Loop**  
 Agents check their own work. Review finds issues → feedback.md captures them → fix agent resolves → review verifies. `AICODE-*` markers track what's resolved and what's still relevant. Context stays clean.
 
-**Skills over Agents**  
-The old approach: separate agent for each domain. The new approach: one general agent that loads skills for the task. Add expertise by adding folders, not rewriting agents.
+**Rules + Skills + Agents**  
+Rules (`.claude/rules/`) provide always-loaded standards — code style, git workflow, platform constraints. Skills provide on-demand expertise — loaded when the task requires specific domain knowledge. Agents execute specific workflows — TDD cycles, review, fixes. Add expertise by adding files, not rewriting agents.
 
 ---
 
@@ -159,15 +159,29 @@ Specialized agents execute tasks across pipeline phases:
 | `feature-tdd` | TDD implementation | After setup, runs RED-GREEN cycles |
 | `feature-fix` | Apply review fixes | When review status = BLOCKED, fixes one error at a time |
 
-### Skills System
+### Rules & Skills
 
-Skills are reusable capabilities that agents can load on demand.
+**Rules** (`.claude/rules/`) are always-loaded standards — loaded automatically like `CLAUDE.md`. Platform-specific rules use `paths` frontmatter to load only when working with matching files.
+
+| Rule | Scope | Paths |
+|------|-------|-------|
+| `git.md` | Branch naming, commits, secret protection | Always |
+| `authentication.md` | Auth library decisions per platform | Always |
+| `backend.md` | ORM, validation, API design, logging | `**/prisma/**`, `**/api/**`, `**/*.py` |
+| `frontend.md` | Next.js, Tailwind, testing, SSR | `**/*.tsx`, `**/*.jsx`, `**/*.css` |
+| `design.md` | Color, typography, animation, accessibility | Always |
+| `docker.md` | Multi-stage builds, dev compose | Always |
+| `code-quality.md` | Error handling, type design, simplification | Always |
+| `ios.md` | Swift style, concurrency, SwiftUI, SwiftData | `**/*.swift`, `**/*.xcodeproj/**` |
+
+**Skills** (`.claude/skills/`) are on-demand expertise — loaded by agents when the task requires specific domain knowledge.
 
 Each skill contains:
-- Instructions for specific domain (analysis, documentation, git workflow)
+- Instructions for a specific domain (analysis, documentation, git workflow)
 - Decision rules with explicit conditions
 - Tool permissions and constraints
 
+Add new standards: create a rule file in `.claude/rules/`.  
 Add new expertise: create a skill folder in `.claude/skills/`.
 
 ---
@@ -216,8 +230,8 @@ irm https://raw.githubusercontent.com/petbrains/mvp-builder/main/scripts/install
 ```
 
 This installs:
-- `.claude/` — commands, agents, skills, hooks
-- `CLAUDE.md` — agent identity and rules
+- `.claude/` — commands, agents, skills, rules
+- `CLAUDE.md` — agent identity and execution rules
 - `.mcp.json` — MCP server configuration
 
 Start with `/docs:prd` to define your product.
