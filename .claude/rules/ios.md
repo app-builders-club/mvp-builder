@@ -546,6 +546,7 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 - `DispatchSourceTimer`: `resume()` before `cancel()` — cancelling while suspended = EXC_BAD_INSTRUCTION.
 - `DispatchSourceTimer`: dealloc while suspended = EXC_BAD_INSTRUCTION. Resume + cancel before releasing.
 - Always `[weak self]` in timer handlers. Selector-based Timer API retains target — prefer block API.
+- `timer.invalidate()` alone is insufficient — always follow with `timer = nil`. RunLoop retains scheduled timers; `[weak self]` prevents closure retention but does NOT stop the timer.
 - `AsyncTimerSequence` (`ContinuousClock.timer`) for modern async code (iOS 16+). Cancels with task.
 
 ## Transferable
@@ -578,7 +579,9 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 
 ## Hygiene
 
-- Never include secrets/API keys in the repository.
+- Never include secrets/API keys in the repository. Use Keychain or server-side proxy.
+- Auth tokens in Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), never `UserDefaults`/`@AppStorage`.
+- `PrivacyInfo.xcprivacy` required — declare all Required Reason API usage (UserDefaults, file timestamps, disk space, boot time). App Store rejects without it since Spring 2024.
 - Code comments where logic isn't self-evident.
 - Unit tests for core logic. UI tests only where unit tests aren't possible.
 - No third-party frameworks without asking first.
