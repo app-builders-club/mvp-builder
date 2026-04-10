@@ -504,6 +504,35 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 
 ---
 
+## UIKit-SwiftUI Bridging
+
+- `UIViewRepresentable`: `makeUIView` creates ONCE, `updateUIView` patches — never recreate. Guard updates with equality checks.
+- Never modify `center`, `bounds`, `frame`, or `transform` on wrapped UIView — SwiftUI owns layout.
+- Coordinator (`class`) for delegate callbacks. Not closures (retain cycles, no protocol conformance).
+- Implement `dismantleUIView` for cleanup (observers, timers, KVO).
+- `UIHostingConfiguration` for collection/table cells (iOS 16+). `UIHostingController` for screens.
+- `sizingOptions: .intrinsicContentSize` on UIHostingController for Auto Layout (iOS 16+).
+- Don't call `controller.dismiss(animated:)` from coordinator — use `@Environment(\.dismiss)`.
+- Custom `@Environment` keys don't cross the bridge. Use `UITraitBridgedEnvironmentKey` (iOS 17+) or inject via initializer. System traits bridge automatically.
+- `UIGestureRecognizerRepresentable` (iOS 18+) for custom gesture recognizers in SwiftUI. No manual target/action.
+
+## Timers
+
+- `Timer.scheduledTimer` uses `.default` RunLoop mode — stops during scroll. Always add to `.common` mode.
+- `Timer.publish` in Combine: specify `in: .common` explicitly.
+- `DispatchSourceTimer`: `resume()` before `cancel()` — cancelling while suspended = EXC_BAD_INSTRUCTION.
+- `DispatchSourceTimer`: dealloc while suspended = EXC_BAD_INSTRUCTION. Resume + cancel before releasing.
+- Always `[weak self]` in timer handlers. Selector-based Timer API retains target — prefer block API.
+- `AsyncTimerSequence` (`ContinuousClock.timer`) for modern async code (iOS 16+). Cancels with task.
+
+## Transferable
+
+- Representation order matters — richest first, fallbacks last. Receivers use first supported.
+- `FileRepresentation` importing: copy `received.file` immediately — sandbox extension is temporary.
+- Custom UTType needs both Swift declaration (`UTType(exportedAs:)`) AND `UTExportedTypeDeclarations` in Info.plist. Without plist entry, cross-app transfers silently fail.
+
+---
+
 ## Hygiene
 
 - Never include secrets/API keys in the repository.
