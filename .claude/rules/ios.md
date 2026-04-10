@@ -1,6 +1,26 @@
 # iOS / Swift Development Standards
 
-Platform-agnostic decisions, constraints, and non-negotiable rules for iOS/macOS/multiplatform Swift projects.
+Decisions, constraints, and non-negotiable rules for iOS/macOS/multiplatform Swift projects.
+
+## Swift Code Style
+
+- Prefer `if let value {` shorthand over `if let value = value {`.
+- Omit `return` for single-expression functions. Use `if`/`switch` as expressions when returning or assigning.
+- Prefer Swift-native string methods: `replacing("a", with: "b")` not `replacingOccurrences(of:with:)`.
+- Prefer modern Foundation: `URL.documentsDirectory` over `FileManager` lookups, `appending(path:)` for URL strings.
+- Never use C-style `String(format: "%.2f", value)`. Use `FormatStyle` APIs or `Text(value, format:)`.
+- Prefer static member lookup: `.circle` not `Circle()`, `.borderedProminent` not `BorderedProminentButtonStyle()`.
+- Avoid force unwraps (`!`) and force `try`. Use `if let`, `guard let`, nil-coalescing, or `do-catch`.
+- `count(where:)` not `filter().count`.
+- `Date.now` not `Date()`.
+- `localizedStandardContains()` for user-input text filtering.
+- Prefer `Double` over `CGFloat` except with optionals or `inout`.
+- Use `PersonNameComponents` with modern formatting for people's names.
+- Prefer modern `Date(myString, strategy: .iso8601)` over manual date formatting. For display use `"y"` not `"yyyy"` for years.
+- Flag silently swallowed errors from user actions — show alerts, not `print(error)`.
+- If a type is repeatedly sorted by the same closure, conform it to `Comparable`.
+
+---
 
 ## Swift Concurrency
 
@@ -11,11 +31,16 @@ Platform-agnostic decisions, constraints, and non-negotiable rules for iOS/macOS
 
 ### Non-Negotiable Rules
 
+- Never use GCD (`DispatchQueue.main.async`, `DispatchQueue.global`, etc.). Always modern Swift concurrency.
+- Never use `Task.sleep(nanoseconds:)` — use `Task.sleep(for:)`.
 - Never recommend `@MainActor` as a blanket fix. Justify why the code is truly UI-bound.
+- When evaluating `MainActor.run()`, check if default isolation is MainActor first — it may not be needed.
 - Prefer structured concurrency (`async let`, `TaskGroup`) over unstructured `Task { }`. Use `Task.detached` only with a documented reason.
 - If recommending `@preconcurrency`, `@unchecked Sendable`, or `nonisolated(unsafe)` — require a documented safety invariant and a follow-up removal plan.
 - Optimize for the smallest safe change. Do not refactor unrelated architecture during migration.
 - Never add fake `await` (e.g. `Task.yield()`) to silence `async_without_await` lint. Remove `async` or suppress narrowly.
+- Flag mutable shared state not protected by an actor or `@MainActor` (unless default isolation is MainActor).
+- If an API offers both `async/await` and closure-based variants, always use `async/await`.
 - After 3 failed fix attempts — stop and question the architecture.
 
 ### Tool Selection
@@ -66,6 +91,8 @@ Platform-agnostic decisions, constraints, and non-negotiable rules for iOS/macOS
 - iOS 17+: `@State` with `@Observable`; `@Bindable` for injected observables needing bindings.
 - `@Observable` classes marked `@MainActor` (unless default actor isolation is MainActor).
 - `@ObservationIgnored` on all property wrappers (`@AppStorage`, `@SceneStorage`, `@Query`) inside `@Observable` classes.
+- Never use `@AppStorage` inside `@Observable` even with `@ObservationIgnored` — it won't trigger view updates. Use `@AppStorage` directly in views.
+- `@AppStorage` must never store passwords, usernames, or sensitive data — use Keychain.
 - `ForEach` uses stable identity (never `.indices` for dynamic content).
 - Constant number of views per `ForEach` element.
 - `.animation(_:value:)` always includes the `value` parameter.
@@ -83,56 +110,115 @@ Platform-agnostic decisions, constraints, and non-negotiable rules for iOS/macOS
 | `let` | Read-only value from parent |
 | `var` | Read-only value reacting via `.onChange()` |
 
+Strongly avoid `ObservableObject`, `@Published`, `@StateObject`, `@ObservedObject`, `@EnvironmentObject` unless unavoidable or legacy.
+
 ### Deprecated API Rules
 
 Always use modern equivalents:
 - `navigationTitle` not `navigationBarTitle`
 - `toolbar { ToolbarItem }` not `navigationBarItems`
+- `.topBarLeading`/`.topBarTrailing` not `.navigationBarLeading`/`.navigationBarTrailing`
 - `foregroundStyle` not `foregroundColor`
 - `clipShape(.rect(cornerRadius:))` not `cornerRadius()`
+- `overlay(alignment:content:)` not `overlay(_:alignment:)`
 - `confirmationDialog` not `actionSheet`
 - `alert(_:isPresented:actions:message:)` not `alert(isPresented:content:)`
 - `animation(_:value:)` not `animation(_:)` without value
 - `NavigationStack` not `NavigationView` (iOS 16+)
 - `@Observable` not `ObservableObject` (iOS 17+)
-- `onChange(of:) { old, new in }` not `onChange(of:perform:)` (iOS 17+)
+- `onChange(of:) { old, new in }` not single-parameter `onChange` (iOS 17+)
 - `sensoryFeedback(_:trigger:)` not UIKit feedback generators (iOS 17+)
 - `Tab` API not `tabItem(_:)` (iOS 18+)
+- `@Animatable` macro not manual `animatableData` (iOS 26+)
+- `scrollIndicators(.hidden)` not `showsIndicators: false`
+- `containerRelativeFrame()`/`visualEffect()` over `GeometryReader` when possible
+- `@Entry` macro for custom environment/focus/transaction/container values
+- Text interpolation not `Text` concatenation with `+`
+- `#Preview` not legacy `PreviewProvider`
+- `ImageRenderer` not `UIGraphicsImageRenderer` for SwiftUI-to-image
 
 ### View Composition
 
-- Prefer modifiers over conditional views for state changes (e.g. `.opacity` not `if`/`else`).
-- Extract complex views into separate `struct` subviews — `@ViewBuilder` functions re-execute on every parent state change.
+- Extract complex views into separate `struct` subviews in their own files. Never use computed properties or methods returning `some View` for complex sections — even with `@ViewBuilder`.
+- Each type (struct, class, enum) in its own Swift file.
+- Button actions extracted into separate methods — no inline logic in closures.
+- Business logic not inline in `body`, `task()`, or `onAppear()` — move to models/services.
+- Prefer modifiers over conditional views for state changes (e.g. `.opacity` not `if`/`else`). Ternary for modifier toggling preserves structural identity.
 - Container views use `@ViewBuilder let content: Content`, not closure.
 - Use `overlay`/`background` for decoration; `ZStack` for peer composition.
 - `.compositingGroup()` before `.clipShape()` on layered views to avoid antialiasing fringes.
+- Avoid `AnyView`. Use `@ViewBuilder`, `Group`, or generics.
+- Prefer `TextField(axis: .vertical)` over `TextEditor` unless full-screen editing is required.
+- Prefer `Button("Label", systemImage: "plus", action: myAction)` when action can be direct parameter.
+- `TabView(selection:)` uses enum binding, not integer or string.
+- Avoid `Binding(get:set:)` in body — use `@State`/`@Binding` + `.onChange()`.
+- Numeric `TextField`: bind to `Int`/`Double` with `format:`, plus `.keyboardType(.numberPad/.decimalPad)`.
+
+### Animation Rules
+
+- Prefer `@Animatable` macro over manual `animatableData`. Use `@AnimatableIgnored` for non-animatable properties.
+- Chain animations via `completion` closure in `withAnimation()`, never via multiple `withAnimation` calls with delays.
+- Transitions require animation context outside the conditional — not inside.
 
 ### Performance Rules
 
-- No object creation in `body` (formatters, etc. — use `static let`).
+- No object creation in `body` (formatters, etc. — prefer `Text(value, format:)` or `static let`).
 - No heavy computation in `body` (sorting, filtering — move to model or `.onChange`).
-- Derived state computed, not stored separately.
+- Derived state computed, not stored separately (unless with explicit invalidation logic).
 - Pass only needed values to views, not entire config objects.
 - `Self._logChanges()` (iOS 17+) to debug unexpected view updates.
-- `LazyVStack`/`LazyHStack` for large collections.
+- `LazyVStack`/`LazyHStack` for large collections. Flag eager stacks with many children.
 - Gate frequent scroll position updates by thresholds, not on every pixel.
-- Sendable closures (`Shape.path`, `visualEffect`, `Layout`) capture values via capture list instead of accessing `@MainActor` state directly.
+- Sendable closures (`Shape.path`, `visualEffect`, `Layout`) capture values via capture list.
+- View initializers must be lightweight — move work to `task()`.
+- `task()` preferred over `onAppear()` for async work (auto-cancels on disappear).
+- Avoid escaping `@ViewBuilder` closures on views; store built view results instead.
+- Avoid expensive inline transforms in `List`/`ForEach` initializers when repeated often.
+- If `ScrollView` has opaque static solid background, use `scrollContentBackground(.visible)` for efficiency.
 
 ### Sheets & Navigation
 
 - `.sheet(item:)` over `.sheet(isPresented:)` for model-based content.
+- When `.sheet(item:)` view takes item as only init param, use `sheet(item: $item, content: SomeView.init)`.
 - Sheets own their actions and dismiss internally via `@Environment(\.dismiss)`.
 - Enum-based `Identifiable` type with `.sheet(item:)` for multiple sheet types.
-- `NavigationStack` with `navigationDestination(for:)` for type-safe navigation.
+- `NavigationStack` with `navigationDestination(for:)` for type-safe navigation. Flag old `NavigationLink(destination:)`.
+- Never mix `navigationDestination(for:)` and `NavigationLink(destination:)` in same hierarchy.
+- `navigationDestination(for:)` registered once per data type — flag duplicates.
 - `NavigationSplitView` for sidebar-driven multi-column layouts.
+- Attach `confirmationDialog()` to the UI element that triggers it (Liquid Glass animation source).
+- Single "OK" dismiss alert: omit the button entirely.
 
 ### Accessibility
 
-- `Button` for all tappable elements (not `onTapGesture`).
-- Built-in text styles or Dynamic Type-aware custom fonts.
-- `@ScaledMetric` for custom spacing/sizing values.
-- Decorative images: `Image(decorative:)` or `.accessibilityHidden(true)`.
+- `Button` for all tappable elements (not `onTapGesture`). If `onTapGesture` must be used, add `.accessibilityAddTraits(.isButton)`.
+- Buttons with image labels must always include text: `Button("Label", systemImage: "plus", action: myAction)`. Flag icon-only buttons.
+- Same rule for `Menu`: include text label, not just image.
+- Built-in text styles or Dynamic Type-aware custom fonts. Never force specific font sizes.
+- `@ScaledMetric` for custom spacing/sizing values. iOS 26+: `.font(.body.scaled(by:))` also available.
+- Decorative images: `Image(decorative:)` or `.accessibilityHidden(true)`. Flag images with unclear VoiceOver readings.
 - Group related elements with `accessibilityElement(children:)`.
+- Respect Reduce Motion — replace motion-based animations with opacity.
+- Respect `accessibilityDifferentiateWithoutColor` — use icons/patterns/strokes beyond just color.
+- Use `accessibilityInputLabels()` for buttons with complex or live-updating labels.
+- Minimum tap target: 44×44 points.
+- `.caption2` is extremely small — generally avoid. `.caption` is borderline.
+
+### Design & HIG
+
+- Place standard fonts, sizes, colors, spacing, padding, rounding, and animation timings in a shared constants enum for uniform design.
+- Never use `UIScreen.main.bounds`. Use `containerRelativeFrame()`, `visualEffect()`, or `GeometryReader` as last resort.
+- Avoid fixed frames unless content fits — prefer flexible sizing for Dynamic Type and device variance.
+- Use `ContentUnavailableView` for empty/missing data. For search: `ContentUnavailableView.search` (auto-includes search term).
+- Use `Label` for icon+text side by side, not `HStack`.
+- Prefer system hierarchical styles (`.secondary`, `.tertiary`) over manual opacity.
+- Wrap `Slider` in `LabeledContent` inside `Form`.
+- `RoundedRectangle` default style is `.continuous` — don't specify explicitly.
+- Use `bold()` not `fontWeight(.bold)`. Avoid scattering `.fontWeight(.medium/.semibold)`.
+- Avoid hardcoded padding/spacing unless specifically requested.
+- Avoid `UIColor` in SwiftUI — use SwiftUI `Color` or asset catalog colors.
+- Use generated symbol asset API: `Image(.avatar)` not `Image("avatar")` when project is configured.
+- Use automatic grammar agreement for supported languages: `Text("^[\(count) person](inflect: true)")`.
 
 ### Liquid Glass (iOS 26+)
 
@@ -141,6 +227,10 @@ Always use modern equivalents:
 - `.glassEffect()` applied after layout modifiers.
 - `.interactive()` only on user-interactable elements.
 - Always `#available(iOS 26, *)` with material-based fallback.
+
+### SwiftData
+
+- If using SwiftData with CloudKit: never `@Attribute(.unique)`, all properties have defaults or are optional, all relationships optional.
 
 ---
 
@@ -252,6 +342,16 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 | `try XCTUnwrap(x)` | `let x = try #require(x)` |
 | `XCTFail("msg")` | `Issue.record("msg")` |
 | `XCTestExpectation` + `wait` | `confirmation` or direct `await` |
+
+---
+
+## Hygiene
+
+- Never include secrets/API keys in the repository.
+- Code comments where logic isn't self-evident.
+- Unit tests for core logic. UI tests only where unit tests aren't possible.
+- No third-party frameworks without asking first.
+- Feature-based folder structure.
 
 ---
 
