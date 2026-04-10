@@ -144,6 +144,17 @@ Decisions, constraints, and non-negotiable rules for iOS/macOS/multiplatform Swi
 
 ---
 
+## Synchronization
+
+- Mutex (iOS 18+) for microsecond operations protecting single properties. Actors for async workflows needing suspension.
+- Atomic types (iOS 18+) for lock-free counters/flags. `.relaxed` ordering for counters, `.acquiringAndReleasing` for read-modify-write.
+- Never hold locks across `await` — deadlock risk: task suspends while holding lock.
+- Never use `os_unfair_lock` directly in Swift — struct can move in memory. Use `OSAllocatedUnfairLock` (iOS 16+) or `Mutex` (iOS 18+).
+- Never use `DispatchSemaphore.wait()` or `NSLock` in Swift Concurrency tasks — blocks cooperative thread pool, can exhaust all threads. Use `withCheckedContinuation` instead.
+- `OSAllocatedUnfairLock` is non-recursive — nested `withLock` = deadlock.
+
+---
+
 ## SwiftUI
 
 ### Correctness Checklist (violations are always bugs)
@@ -227,10 +238,13 @@ Always use modern equivalents:
 ### Performance Rules
 
 - No object creation in `body` (formatters, etc. — prefer `Text(value, format:)` or `static let`).
-- No heavy computation in `body` (sorting, filtering — move to model or `.onChange`).
+- No heavy computation in `body` (sorting, filtering, formatter creation — move to model or `.onChange`).
+- Never create `DateFormatter`/`NumberFormatter` in view body — create once, reuse.
+- Never create `Binding(get:set:)` in view body — breaks identity tracking. Use `@Bindable` (iOS 17+) or cache binding.
 - Derived state computed, not stored separately (unless with explicit invalidation logic).
 - Pass only needed values to views, not entire config objects.
-- `Self._logChanges()` (iOS 17+) to debug unexpected view updates.
+- `Self._printChanges()` (debug only, remove before shipping) to debug unexpected view updates.
+- Don't store frequently-changing values in `@Environment` (e.g. scroll offset) — triggers checks in all child views. Use direct parameters or `@Observable` model.
 - `LazyVStack`/`LazyHStack` for large collections. Flag eager stacks with many children.
 - Gate frequent scroll position updates by thresholds, not on every pixel.
 - Sendable closures (`Shape.path`, `visualEffect`, `Layout`) capture values via capture list.
@@ -247,8 +261,12 @@ Always use modern equivalents:
 - Sheets own their actions and dismiss internally via `@Environment(\.dismiss)`.
 - Enum-based `Identifiable` type with `.sheet(item:)` for multiple sheet types.
 - `NavigationStack` with `navigationDestination(for:)` for type-safe navigation. Flag old `NavigationLink(destination:)`.
+- `navigationDestination(for:)` outside lazy containers — inside `LazyVStack`/`ForEach` may not be loaded when needed.
 - Never mix `navigationDestination(for:)` and `NavigationLink(destination:)` in same hierarchy.
 - `navigationDestination(for:)` registered once per data type — flag duplicates.
+- Each tab owns its own `NavigationStack` — shared stack across tabs loses state on tab switch.
+- `NavigationPath` modifications must be on `@MainActor`. Off-main modifications cause silent failures or corruption.
+- Deep links: pop to root before building path. Build parent → child order.
 - `NavigationSplitView` for sidebar-driven multi-column layouts.
 - Attach `confirmationDialog()` to the UI element that triggers it (Liquid Glass animation source).
 - Single "OK" dismiss alert: omit the button entirely.
@@ -272,6 +290,8 @@ Always use modern equivalents:
 
 - Place standard fonts, sizes, colors, spacing, padding, rounding, and animation timings in a shared constants enum for uniform design.
 - Never use `UIScreen.main.bounds`. Use `containerRelativeFrame()`, `visualEffect()`, or `GeometryReader` as last resort.
+- Never use `UIDevice.current.orientation` or `UIDevice.current.userInterfaceIdiom` for layout — wrong in multitasking, Stage Manager, iOS 26 free-form windows. Respond to container size.
+- Prefer `onGeometryChange(for:)` over `GeometryReader` — no greedy sizing side effects. Constrain `GeometryReader` with `.frame()` if used.
 - Avoid fixed frames unless content fits — prefer flexible sizing for Dynamic Type and device variance.
 - Use `ContentUnavailableView` for empty/missing data. For search: `ContentUnavailableView.search` (auto-includes search term).
 - Use `Label` for icon+text side by side, not `HStack`.
