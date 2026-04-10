@@ -230,7 +230,67 @@ Always use modern equivalents:
 
 ### SwiftData
 
-- If using SwiftData with CloudKit: never `@Attribute(.unique)`, all properties have defaults or are optional, all relationships optional.
+#### Model Rules
+
+- `ModelContext` and model instances must never cross actor boundaries. Persistent identifiers are `Sendable` — send ID and re-fetch in destination context.
+- Persistent IDs are temporary before first save (start with "t"). Save before relying on ID.
+- Do not use property name `description` in `@Model` classes — explicitly disallowed.
+- Do not add property observers to `@Model` classes — silently ignored.
+- Enum properties must conform to `Codable`. Enums with associated values are supported.
+- `@Attribute(.externalStorage)` is a suggestion (not requirement), applies only to `Data`.
+- `@Transient` properties must have a default value, reset on fetch. Prefer computed properties for values derived from stored properties.
+- `@Query` only works inside SwiftUI views — never in classes/services. Use `ModelContext.fetch(FetchDescriptor)` outside views.
+
+#### Relationships
+
+- `@Relationship` on one side only — both sides causes circular reference.
+- Always specify inverse explicitly: `@Relationship(deleteRule: .cascade, inverse: \Sight.destination)`. SwiftData frequently gets inverse relationships wrong.
+- Always set explicit delete rule. Default `.nullify` can orphan objects or crash on non-optional properties. Most common: `.cascade`.
+- `#Unique` only once per model. Multiple constraints go as separate key path arrays: `#Unique<Foo>([\.email], [\.username])`.
+
+#### Saving
+
+- Autosave timing is unpredictable — add explicit `save()` when correctness matters.
+- No need to check `hasChanges` before saving (unlike Core Data) — just call `save()`.
+
+#### Predicates
+
+- `localizedStandardContains()` for string matching, not `lowercased().contains()`.
+- `starts(with:)` instead of `hasPrefix()` (unsupported).
+- `!isEmpty` not `isEmpty == false` — the latter crashes at runtime.
+- No regex in predicates — compiles but crashes at runtime.
+- No computed properties, `@Transient` properties, or custom `Codable` structs in predicates — compiles but crashes.
+- Unsupported and won't compile: `hasSuffix()`, `lowercased()`, `map()`, `reduce()`, `count(where:)`, `first`, custom operators.
+
+#### FetchDescriptor Optimization
+
+- Set `propertiesToFetch` to limit fetched properties.
+- Set `relationshipKeyPathsForPrefetching` for relationships you know will be used.
+- `fetchCount()` for counts — but won't live update without `@Query` or other trigger.
+
+#### Migration
+
+- Always have an explicit migration schema, even for lightweight migrations.
+
+#### Indexing (iOS 18+)
+
+- `#Index<Model>([\.property])` for single-property indexes.
+- Compound indexes for properties queried together: `#Index<Model>([\.type, \.author])`.
+- Avoid on write-heavy/read-rare data (logging).
+
+#### Class Inheritance (iOS 26+)
+
+- Subclasses must be marked `@available(iOS 26, *)` even if deployment target is iOS 26.
+- Both parent and child need `@Model` macro.
+- List parent and all child classes in schema — SwiftData can't infer hierarchy.
+- Only add subclassing if it has clear benefit — protocols are often simpler.
+
+#### CloudKit Constraints
+
+- Never `@Attribute(.unique)` or `#Unique` — not supported, breaks local data too.
+- All properties must have defaults or be optional.
+- All relationships must be optional.
+- Design for eventual consistency — data may not have synced yet.
 
 ---
 
