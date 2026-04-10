@@ -28,15 +28,17 @@ Decisions, constraints, and non-negotiable rules for iOS/macOS/multiplatform Swi
 
 1. Check `Package.swift` or `.pbxproj` for: language mode (Swift 5 vs 6), strict concurrency level, default isolation, upcoming features (`NonisolatedNonsendingByDefault`).
 2. If any setting is unknown — ask before giving migration-sensitive guidance. Do not guess.
+3. Default isolation is per-module — neighboring modules and dependencies can use different defaults.
 
 ### Non-Negotiable Rules
 
-- Never use GCD (`DispatchQueue.main.async`, `DispatchQueue.global`, etc.). Always modern Swift concurrency.
+- Never use GCD (`DispatchQueue.main.async`, `DispatchQueue.global`, etc.) in app-level code. GCD is acceptable in low-level libraries, framework interop, or performance-critical synchronous sections.
 - Never use `Task.sleep(nanoseconds:)` — use `Task.sleep(for:)`.
 - Never recommend `@MainActor` as a blanket fix. Justify why the code is truly UI-bound.
 - When evaluating `MainActor.run()`, check if default isolation is MainActor first — it may not be needed.
-- Prefer structured concurrency (`async let`, `TaskGroup`) over unstructured `Task { }`. Use `Task.detached` only with a documented reason.
-- If recommending `@preconcurrency`, `@unchecked Sendable`, or `nonisolated(unsafe)` — require a documented safety invariant and a follow-up removal plan.
+- Prefer structured concurrency (`async let`, `TaskGroup`) over unstructured `Task { }`. Use `Task.detached` only with a documented reason — it sheds actor isolation AND priority.
+- If recommending `@preconcurrency`, `@unchecked Sendable`, or `nonisolated(unsafe)` — require a documented safety invariant and a follow-up removal plan. Check if Swift 6 region-based isolation makes it unnecessary first.
+- `@unchecked Sendable` only for types with internal locking that are provably thread-safe. Never to silence compiler errors.
 - Optimize for the smallest safe change. Do not refactor unrelated architecture during migration.
 - Never add fake `await` (e.g. `Task.yield()`) to silence `async_without_await` lint. Remove `async` or suppress narrowly.
 - Flag mutable shared state not protected by an actor or `@MainActor` (unless default isolation is MainActor).
@@ -48,12 +50,81 @@ Decisions, constraints, and non-negotiable rules for iOS/macOS/multiplatform Swi
 | Need | Tool |
 |------|------|
 | Single async operation | `async/await` |
-| Fixed parallel operations | `async let` |
-| Dynamic parallel operations | `withTaskGroup` |
+| Fixed parallel operations (known count, different types) | `async let` |
+| Dynamic parallel operations (runtime count, same type) | `withTaskGroup` |
+| Fire-and-forget child tasks (no results needed) | `withDiscardingTaskGroup` |
 | Sync → async bridge | `Task { }` (inherits actor context) |
 | Shared mutable state | `actor` |
 | UI-bound state | `@MainActor` (only for truly UI-related code) |
+| CPU-heavy offloading (Swift 6.2) | `@concurrent` |
 | Synchronous locking (iOS 18+) | `Mutex` |
+| Bridging completion handlers | `withCheckedThrowingContinuation` |
+| Bridging delegate streams | `AsyncStream.makeStream(of:)` |
+
+### Actor Rules
+
+- **Reentrancy is the #1 concurrency bug**: after every `await` inside an actor, all assumptions about state are invalidated. Never assume state unchanged after `await`.
+- Capture async result into a local before writing to actor state. For dedup, store in-flight `Task` handles.
+- Force unwrap (`!`) on actor state after `await` is a latent crash — another caller may have set it to nil.
+- Flag actor types that mostly forward work or own little mutable state — they may not need to be actors.
+- `MainActor.assertIsolated()` for debugging (debug builds only, compiled out of release).
+- `@MainActor` propagates to: subclasses, extensions, conformances to `@MainActor` protocols (including SwiftUI `View`). Does NOT propagate to closures passed to non-isolated functions.
+
+### Swift 6.2 Behavior Changes
+
+- **`nonisolated` async functions stay on caller's actor by default** — no longer hop to background. Use `@concurrent` to explicitly offload CPU-heavy work.
+- `Task.immediate` starts executing synchronously on caller's executor up to first suspension point.
+- `isolated deinit` runs deinitializer on the class's actor — needed when teardown touches actor-protected state.
+- Task naming: `Task(name: "MyTask") { }` and `group.addTask(name:)` — debugging aid for logs/tracing.
+
+### Structured Concurrency
+
+- Task groups over loops — `for item in items { Task { } }` loses cancellation propagation and error collection.
+- Limit concurrency manually when needed: start N initial tasks, add next as each completes.
+- For partial results when one child throws: catch errors inside each child task, return `Result`.
+
+### Cancellation
+
+- Cancellation is cooperative — `task.cancel()` only sets a flag. Code must check `Task.checkCancellation()` or `Task.isCancelled`.
+- CPU-bound loops with no `await` never see cancellation unless checked explicitly.
+- Always filter out `CancellationError` before handling other errors — it's a normal lifecycle event, not a user-facing error.
+- Cancel stored tasks before starting new ones + cancel on `deinit`.
+- SwiftUI `.task()` cancels automatically on disappear — prefer over `onAppear` + `Task { }`.
+- `withTaskCancellationHandler` bridges Swift cancellation to legacy APIs with their own cancel mechanism.
+
+### AsyncStream
+
+- Prefer `AsyncStream.makeStream(of:)` factory over closure-based initializer.
+- Continuation must be finished exactly once. Zero = consumer hangs forever. Twice = programmer error.
+- Set buffering policy for high-throughput: `.bufferingNewest(n)` or `.bufferingOldest(n)`. Default `.unbounded` can cause unbounded memory growth.
+- `for await` loop stops on cancellation or finish — cleanup code after the loop still runs.
+
+### Bug Patterns to Flag
+
+- Actor check-then-act across `await` (reentrancy).
+- Unstructured tasks in loops (use task groups).
+- Swallowed errors in `Task { try await riskyWork() }` — error silently lost. Handle inside closure.
+- `CancellationError` caught and shown as user-facing error.
+- `@unchecked Sendable` on class with mutable vars and no synchronization.
+- `MainActor.run {}` when already on MainActor.
+- `Task {}` inside `onAppear()` — use `.task()` modifier.
+
+### Diagnostic Fix Order ("Sending x risks data races")
+
+1. Check if region-based isolation already handles it.
+2. Mark parameter `sending` (caller transfers ownership).
+3. Make type `Sendable` (value type, immutable class, internally synchronized).
+4. Check if `nonisolated(nonsending)` resolves it.
+5. Last resort: `@unchecked Sendable` with verified correctness.
+
+### Bridging Legacy Code
+
+- Completion handlers → `withCheckedThrowingContinuation`. Resume exactly once on every path. Default to checked variants.
+- Delegates (multi-value) → `AsyncStream.makeStream(of:)`. Single-shot delegates → `withCheckedContinuation`.
+- `DispatchQueue.main.async` → `@MainActor` function.
+- `DispatchQueue.global().async` → `@concurrent` (Swift 6.2) or task group.
+- Serial `DispatchQueue` protecting state → `actor`.
+- Leave existing tested completion handler code alone unless modernization is requested — provide async wrappers instead.
 
 ### Swift 6 Migration
 
@@ -70,13 +141,6 @@ Decisions, constraints, and non-negotiable rules for iOS/macOS/multiplatform Swi
 - Infinite `AsyncSequence` loops with strong `self` capture keep the object alive forever.
 - `isolated deinit` runs cleanup but won't break retain cycles (deinit never called if cycle exists).
 - `try?` in loops with `Task.sleep` can swallow `CancellationError` — check `Task.isCancelled` explicitly.
-
-### Testing Concurrency
-
-- Prefer Swift Testing over XCTest for new tests.
-- Use `withMainSerialExecutor` + `Task.yield()` for deterministic intermediate-state assertions.
-- `withMainSerialExecutor` does not work with parallel test execution — mark suite `.serialized`.
-- Replace `wait(for:)` with `await fulfillment(of:)` to avoid deadlocks.
 
 ---
 
@@ -379,8 +443,17 @@ Never pass `NSManagedObject` between contexts or threads. Always use `NSManagedO
 
 - Tests run in parallel by default with randomized order.
 - Fix shared-state coupling before adding `.serialized`.
-- `.serialized` is a transitional tool, not default architecture.
+- `.serialized` only affects parameterized tests (runs argument cases one-at-a-time). Applying to non-parameterized test does nothing.
 - Use in-memory fakes for the fast path.
+- Enable Thread Sanitizer (TSan) in a dedicated CI job to catch races that static checks miss.
+
+### Async Testing
+
+- Make test functions `async` directly — don't wrap in `Task {}` or use expectations/semaphores.
+- `confirmation("description", expectedCount: N)` for async event validation. All async work must complete before the confirmation closure returns.
+- Never use `Task.sleep` or fixed delays as synchronization — tests become flaky. Await actual operations.
+- `@MainActor` on tests only when code under test requires main-actor isolation.
+- Test scoping traits with `@TaskLocal` (Swift 6.1+) for concurrency-safe per-test configuration instead of shared mutable setUp.
 
 ### Organization
 
