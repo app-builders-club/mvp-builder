@@ -478,6 +478,14 @@ Never pass `NSManagedObject` between contexts or threads. Always use `NSManagedO
 - Verification methods: pass `sourceLocation: SourceLocation = #_sourceLocation` so failures report the call site.
 - Raw identifiers (Swift 6.2): `` func `Strip HTML tags from string`() `` — suggest but don't force unless project already uses them.
 
+### XCUITest (UI Automation)
+
+- Always use `accessibilityIdentifier` for test-critical elements — never localized strings.
+- Never `sleep()` — use `waitForExistence(timeout:)` or predicate-based waits.
+- Each test independent — no shared state, no order dependency.
+- Launch with `--uitesting` and `--reset-state` arguments for clean state.
+- Test user-visible behavior, not implementation details (not `cells.count == 10`, but `staticTexts["10 items"].exists`).
+
 ### Migration from XCTest
 
 Order: assertions → `@Test` declarations → suite organization → parameterization → traits/tags. Don't rewrite without request.
