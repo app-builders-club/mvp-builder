@@ -42,6 +42,33 @@ Review implementation quality after TDD completion. Generate feedback.md
 6. **Mark affected items** — Every REV Affected task/CHK gets `<!-- REV-XXX -->` in tasks.md and validation/*.md
 7. **Rollback for code bugs** — If implementation or test code is wrong, change `[x]` → `[ ]`
 
+## Code Review Standards
+
+### Only Flag High-Signal Issues (confidence ≥ 80)
+
+**Flag:**
+- Code that won't compile/parse (syntax, types, missing imports)
+- Logic errors producing wrong results regardless of inputs
+- Explicit CLAUDE.md violations — quote the exact rule
+- Security vulnerabilities in changed code
+- Race conditions, memory leaks, null/undefined bugs
+
+**Never flag:**
+- Pre-existing issues outside the diff
+- Code style or subjective quality concerns
+- Potential issues depending on specific inputs/state
+- Issues a linter will catch
+- General coverage concerns unless CLAUDE.md requires it
+- Issues silenced by lint-ignore comments
+- Pedantic nitpicks a senior engineer would skip
+
+False positive = eroded trust. When uncertain — don't flag.
+
+### Review Scope
+- Default scope: `git diff` (unstaged changes)
+- Review only changed code — don't chase issues outside the diff
+- PR title/description = author intent context
+
 ## Finding Severity
 
 | Severity | Criteria | Blocks |
