@@ -2,6 +2,39 @@
 
 All notable changes to MVP Builder will be documented in this file. The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.0.7] - 2026-04-10
+
+### Added
+
+**Rules**
+- `authentication.md` — restored as standalone rule (was merged into backend.md in v0.0.6). All platforms: Next.js, Express, React Native, iOS, Android, Flutter, Browser Extension, Python.
+- `ios.md` — `paths` frontmatter (`**/*.swift`, `**/*.xcodeproj/**`). Loads only when working with Swift files — saves context in web projects.
+- `backend.md` — `paths` frontmatter (`**/prisma/**`, `**/api/**`, `**/*.py`). Added API Design section (error format, pagination, versioning, rate limiting). Added Python-specific rules (Pydantic, type hints).
+- `frontend.md` — `paths` frontmatter (`**/*.tsx`, `**/*.jsx`, `**/*.css`). Added Testing section (Vitest + React Testing Library + Playwright + msw).
+- `docker.md` — added Python containerization (slim image, Poetry export, Gunicorn/Uvicorn, collectstatic).
+- `code-quality.md` — added cross-platform precedence note.
+
+### Changed
+
+**Rules**
+- `frontend.md` — removed all design duplicates: typography table, UI components table, animations table, assets table, color system principles, accessibility principles, semantic color HEX values, Quality Gate. Design decisions now single-sourced in `design.md`.
+- `code-quality.md` — removed Verification Order (single-sourced in CLAUDE.md), removed Code Review section (moved to review agent).
+- `backend.md` — removed Authentication table (now in standalone `authentication.md`).
+
+**Agents**
+- `review` — added Code Review Standards section (from code-quality.md): high-signal flagging rules, confidence threshold, review scope.
+
+**Documentation**
+- README.md: "Skills over Agents" → "Rules + Skills + Agents" principle. "Skills System" → "Rules & Skills" section with rules table and paths. Installation: hooks → rules.
+
+### Audit Summary
+
+Full consistency audit of CLAUDE.md + all rules:
+- **7 duplicate groups** resolved (verification order ×4, typography ×2, UI components ×2, animations ×2, assets ×2, color system ×2, accessibility ×2)
+- **1 contradiction** fixed (semantic color HEX in frontend.md vs "never hardcode" in design.md)
+- **5 gaps** filled (authentication standalone, frontend testing, backend API design, Python docker, code-quality cross-platform note)
+- **3 path-scoped rules** added (ios, backend, frontend) — context savings for non-matching projects
+
 ## [0.0.6] - 2025-03-04
 
 ### Added
@@ -134,6 +167,7 @@ All notable changes to MVP Builder will be documented in this file. The format i
 - Skills Registry for automatic skill matching
 - Cross-platform installation scripts (bash, PowerShell)
 
+[0.0.7]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.7
 [0.0.6]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.6
 [0.0.5]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.5
 [0.0.4]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.4
