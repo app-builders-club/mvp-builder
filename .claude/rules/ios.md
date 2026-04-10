@@ -13,6 +13,7 @@ Decisions, constraints, and non-negotiable rules for iOS/macOS/multiplatform Swi
 - Avoid force unwraps (`!`) and force `try`. Use `if let`, `guard let`, nil-coalescing, or `do-catch`.
 - `count(where:)` not `filter().count`.
 - `Date.now` not `Date()`.
+- `Task.sleep(for: .seconds(1))` not `Task.sleep(nanoseconds:)`.
 - `localizedStandardContains()` for user-input text filtering.
 - Prefer `Double` over `CGFloat` except with optionals or `inout`.
 - Use `PersonNameComponents` with modern formatting for people's names.
@@ -522,6 +523,8 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 | `continueAfterFailure = false` | `#require` (stops on failure) |
 | `XCTSkip` | `.enabled(if:)` / `.disabled("reason")` traits |
 
+- **Swift 6.2 + MainActor default**: `XCTestCase` subclasses must be `nonisolated final class` — XCTestCase initializers are nonisolated Objective-C, conflicting with MainActor-isolated subclasses. Mark individual test methods `@MainActor` as needed. Better: migrate to `@Suite struct`.
+
 ---
 
 ## UIKit-SwiftUI Bridging
@@ -550,6 +553,26 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 - Representation order matters — richest first, fallbacks last. Receivers use first supported.
 - `FileRepresentation` importing: copy `received.file` immediately — sandbox extension is temporary.
 - Custom UTType needs both Swift declaration (`UTType(exportedAs:)`) AND `UTExportedTypeDeclarations` in Info.plist. Without plist entry, cross-app transfers silently fail.
+
+---
+
+## File Storage Locations
+
+- **Documents/** — user-created content only. Backed up. Never purged.
+- **Library/Application Support/** — app data (databases, configs). Backed up. Never purged.
+- **Library/Caches/** — re-downloadable content. NOT backed up. Purged under storage pressure.
+- **tmp/** — truly temporary. Purged aggressively, even while app running.
+- Never store re-downloadable content (images, podcasts) in Documents — bloats backup, risks App Store rejection.
+- Mark downloaded content with `isExcludedFromBackup = true` if stored outside Caches.
+- Check `volumeAvailableCapacityForOpportunisticUsage` before caching optional content.
+- `.completeFileProtection` files inaccessible when device locked — use `.completeUntilFirstUserAuthentication` for background-accessed files.
+
+## Performance Notes
+
+- Order struct fields largest-to-smallest to minimize padding. Two `Bool` fields between two `Int64` fields wastes 14 bytes.
+- `reserveCapacity(_:)` on arrays/dictionaries when size is known upfront.
+- Prefer non-escaping closures in hot paths — `@Sendable`/`@escaping` closures heap-allocate capture context.
+- `unowned` (~2x faster than `weak`) when child lifetime < parent lifetime is guaranteed.
 
 ---
 
