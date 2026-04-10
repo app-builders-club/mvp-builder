@@ -423,13 +423,20 @@ Never pass `NSManagedObject` between contexts or threads. Always use `NSManagedO
 - Swift Testing for unit and integration tests.
 - XCTest for: UI automation (`XCUIApplication`), performance metrics (`XCTMetric`), Objective-C tests.
 - Both can coexist in the same target during migration.
+- Never test SwiftUI views directly — test `@Observable` view models or extracted business logic.
 
 ### Assertions
 
 - `#expect` as default assertion. Natural Swift expressions (`==`, `>`, `.contains`).
-- `#require` when subsequent lines depend on a prerequisite value (guard + fail early).
-- `withKnownIssue` for temporary expected failures — prefer over blanket disabling.
+- Never use `!` negation in `#expect` — `#expect(!isLoggedIn)` defeats macro expansion and gives unhelpful output. Use `#expect(isLoggedIn == false)`.
+- `#require` when subsequent lines depend on a prerequisite value (guard + fail early). Also unwraps optionals.
+- `withKnownIssue` for temporary expected failures — prefer over blanket disabling. `isIntermittent: true` for flaky issues being debugged.
 - `Issue.record("...")` replaces `XCTFail("...")`.
+- `#expect(throws: SpecificError.self)` — always name specific error, never broad `Error.self`. Returns the error (Swift 6.1+) for separate validation.
+- `#expect(throws: Never.self)` to assert no throw.
+- Exit tests (Swift 6.2): `await #expect(processExitsWith: .failure) { }` for `precondition`/`fatalError`.
+- Float tolerance: no built-in support. Use Swift Numerics `isApproximatelyEqual(to:absoluteTolerance:)` — don't add dependency without asking.
+- `.timeLimit(.minutes(1))` — NOT `.seconds()`. Shorter of suite/test limits wins.
 
 ### Parameterized Tests
 
@@ -438,43 +445,54 @@ Never pass `NSManagedObject` between contexts or threads. Always use `NSManagedO
 - No `if`/`switch` branching inside parameterized test bodies — split into separate tests.
 - Paired inputs: array of tuples or dictionary, not `zip(allCases, allCases)`.
 - `CaseIterable.allCases` only for property-based tests, not example-based mappings.
+- Two argument collections form cartesian product — use `zip()` for pairwise.
 
 ### Parallelization
 
 - Tests run in parallel by default with randomized order.
 - Fix shared-state coupling before adding `.serialized`.
-- `.serialized` only affects parameterized tests (runs argument cases one-at-a-time). Applying to non-parameterized test does nothing.
+- `.serialized` only affects parameterized tests (runs argument cases one-at-a-time). Applying to non-parameterized test does nothing. Applying to suite only serializes parameterized tests inside it.
 - Use in-memory fakes for the fast path.
 - Enable Thread Sanitizer (TSan) in a dedicated CI job to catch races that static checks miss.
 
 ### Async Testing
 
 - Make test functions `async` directly — don't wrap in `Task {}` or use expectations/semaphores.
-- `confirmation("description", expectedCount: N)` for async event validation. All async work must complete before the confirmation closure returns.
+- `confirmation("description", expectedCount: N)` for async event validation. All async work must complete before the confirmation closure returns. Range-based counts supported (Swift 6.1+): `expectedCount: 5...10` or `5...`.
+- `confirmation(expectedCount: 0)` means "ensure event never happens."
 - Never use `Task.sleep` or fixed delays as synchronization — tests become flaky. Await actual operations.
 - `@MainActor` on tests only when code under test requires main-actor isolation.
 - Test scoping traits with `@TaskLocal` (Swift 6.1+) for concurrency-safe per-test configuration instead of shared mutable setUp.
+- Attachments (Swift 6.2): `Attachment.record(codableValue, named:)` for debug data on failures.
 
 ### Organization
 
-- `@Test` on function (global or method). `@Suite` for grouping with traits.
-- Prefer `struct` suites for value semantics.
+- `@Test` on function (global or method). `@Suite` only needed when adding display name or traits — any type with `@Test` methods is automatically a suite.
+- Prefer `struct` suites for value semantics. Use `init()` instead of `setUp()`, `deinit` (class/actor) instead of `tearDown()`.
 - `@available` on test functions, never on suite types.
 - Tags for cross-suite grouping and test-plan filtering. Keep naming stable.
+- `.bug(id:)` or `.bug("url")` trait for tests related to specific bugs.
 - `import Testing` only in test targets.
+- Test file/folder structure mirrors production code structure.
+- Expose hidden dependencies (URLSession, UserDefaults) via protocol injection for testability.
+- Verification methods: pass `sourceLocation: SourceLocation = #_sourceLocation` so failures report the call site.
+- Raw identifiers (Swift 6.2): `` func `Strip HTML tags from string`() `` — suggest but don't force unless project already uses them.
 
 ### Migration from XCTest
 
-Order: assertions → `@Test` declarations → suite organization → parameterization → traits/tags.
+Order: assertions → `@Test` declarations → suite organization → parameterization → traits/tags. Don't rewrite without request.
 
 | XCTest | Swift Testing |
 |--------|---------------|
 | `XCTAssertEqual(a, b)` | `#expect(a == b)` |
 | `XCTAssertNil(x)` | `#expect(x == nil)` |
-| `XCTAssertThrowsError(try f())` | `#expect(throws: (any Error).self) { try f() }` |
+| `XCTAssertIdentical(a, b)` | `#expect(a === b)` |
+| `XCTAssertThrowsError(try f())` | `#expect(throws: SpecificError.self) { try f() }` |
 | `try XCTUnwrap(x)` | `let x = try #require(x)` |
 | `XCTFail("msg")` | `Issue.record("msg")` |
 | `XCTestExpectation` + `wait` | `confirmation` or direct `await` |
+| `continueAfterFailure = false` | `#require` (stops on failure) |
+| `XCTSkip` | `.enabled(if:)` / `.disabled("reason")` traits |
 
 ---
 
