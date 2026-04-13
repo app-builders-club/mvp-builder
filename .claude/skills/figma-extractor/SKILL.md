@@ -128,13 +128,26 @@ Mark all: `source: "figma-variables"`.
 
 **When variables come back empty** — common. Many files use local styles instead of Variables. Fall back to 3.2.
 
-#### 3.2 Design Context (Fallback Token Source)
+#### 3.2 Design Context (Fallback Token Source + Usage Analysis)
 
 `get_design_context` returns applied styles, layout, component structure. Use when variables are empty or sparse, or when you need component patterns.
 
 Extract: color fills, text styles, spacing/padding, corner radius, effects, component instances.
 
 Mark all: `source: "figma-context"`.
+
+**Usage tracking:** When extracting from multiple screens, count how many times each value appears and record where it's used. This serves two purposes:
+
+- **Frequency** — a color used 47 times matters more than one used twice. Downstream style-guide uses this to prioritize rules.
+- **Bindings** — mapping "which token is used where" (e.g., `primary-500` → Button fill, Header background) gives downstream consumers concrete usage context for generating actionable rules.
+
+For each extracted value, track:
+```
+usageCount: N                          // how many nodes reference this value
+usedIn: ["Button/fill", "Header/bg"]   // screen/component + property pairs
+```
+
+Run `get_design_context` on 2-3 complex screens minimum to build meaningful usage data. Single-screen extraction gives unreliable frequency.
 
 **Truncation:** If response is too large → fetch child nodes individually via `get_metadata` node IDs, then `get_design_context` per child.
 
@@ -249,9 +262,13 @@ Merge tokens from all sources. `figma-variables` wins over `figma-library` wins 
   scopes: ["FRAME_FILL", "SHAPE_FILL"],               // Level 2
   aliasOf: "blue/500",                                 // Level 2
   collection: "Color",                                 // Level 2
-  modes: { "Light": "#3B82F6", "Dark": "#60A5FA" }    // Level 2
+  modes: { "Light": "#3B82F6", "Dark": "#60A5FA" },   // Level 2
+  usageCount: 23,                                      // from 3.2 analysis
+  usedIn: ["Button/fill", "Header/bg", "Link/color"]   // from 3.2 analysis
 }
 ```
+
+`usageCount` and `usedIn` are populated from design context analysis (3.2). Tokens with `usageCount: 0` are flagged as orphans in Quality Signals (4.7).
 
 ### 4.2 Component List
 
@@ -260,10 +277,26 @@ FIGMA_COMPONENTS = [{
   figmaName: "Button",
   variants: ["primary", "secondary", "ghost"],
   properties: { "Label": "TEXT", "Size": "VARIANT", ... },  // Level 2-3
+  propertyClassification: {                                   // derived from property types
+    state: ["State"],           // VARIANT with Default/Hover/Pressed/Disabled → interactive state
+    size: ["Size"],             // VARIANT with Small/Medium/Large → dimensional
+    style: ["Style", "Type"],   // VARIANT with Primary/Secondary/Ghost → visual variant
+    content: ["HasIcon"]        // BOOLEAN → content toggle (show/hide slot)
+  },
   confidence: "high",
   source: "figma-variables"
 }]
 ```
+
+**Property classification rules:**
+- **state** — VARIANT property where options include interactive states (Default, Hover, Pressed, Focused, Disabled, Loading, Error)
+- **size** — VARIANT property where options are dimensional (Small, Medium, Large, XS, XL, or numeric)
+- **style** — VARIANT property where options are visual variants (Primary, Secondary, Destructive, Ghost, Outline)
+- **content** — BOOLEAN property (HasIcon, ShowSubtitle, ShowBadge) = content slot toggle
+- **text** — TEXT property (Label, Title, Placeholder) = editable content
+- **swap** — INSTANCE_SWAP property (Icon, Avatar) = replaceable child component
+
+Classification is best-effort by naming patterns. When ambiguous, leave unclassified — the caller can resolve.
 
 ### 4.3 Style Maps (Level 2)
 
@@ -308,8 +341,29 @@ Screens: [N] discovered, [N] with screenshots
 Tokens: [N] from Variables, [N] from Context, [N] from Library, [N] total unique
 Styles: [N] text, [N] effect, [N] paint
 Components: [N] discovered, [N] with property definitions
-Warnings: [list if any]
+Quality: [N] warnings (see below)
 ```
+
+### 4.7 Quality Signals
+
+After merging all data, flag design consistency issues. These are warnings for downstream consumers — they don't block extraction but signal that the design may produce noisy tokens.
+
+| Signal | How to detect | Downstream impact |
+|---|---|---|
+| **Hardcoded colors** | Color value found in design context but no matching variable exists | Token may be one-off, not systematic — lower confidence |
+| **Inconsistent spacing** | Multiple spacing values that don't fit a base grid (e.g., 5, 7, 13 alongside 4, 8, 16) | Spacing tokens may include accidental values |
+| **Detached instances** | Component instance with no link to source component set | Component may have been modified locally — properties unreliable |
+| **Orphan variables** | Variable defined but never used in any extracted screen | Token exists in system but may be deprecated |
+| **Style/Variable mismatch** | Text style "Heading/H1" says 48px but variable `font/heading/size` says 44px | Conflict that downstream needs to resolve |
+
+Detection happens automatically during ORGANIZE by cross-referencing:
+- Token map values vs design context applied values (hardcoded colors)
+- Spacing values vs detected base grid (inconsistent spacing)
+- Component instances from 3.2/3.6 vs component set definitions (detached)
+- Variable definitions from 3.1/3.4 vs usage data from 3.2 (orphans)
+- Style values from 3.5 vs variable values from 3.4 (mismatches)
+
+Include in summary as `warnings[]`. Each warning: `{ type, token, details }`.
 
 ---
 
@@ -323,12 +377,13 @@ PARSE  → URL → fileKey + nodeId
 DISCOVER → get_metadata → SCREENS[]
 EXTRACT:
   L1: get_variable_defs → tokens
-      get_design_context on 2-3 complex screens → tokens + components
+      get_design_context on 2-3 complex screens → tokens + components + usage data
       get_screenshot for each screen
   L2: use_figma extractVariableMetadata.js → codeSyntax, scopes, aliases, modes
       use_figma extractStyles.js → text/effect/paint styles
       use_figma extractComponentInventory.js → component sets + properties
-ORGANIZE → merge token map, style maps, component list, screen index, summary
+ORGANIZE → merge token map (with usage counts), style maps, component list
+           (with property classification), screen index, quality signals, summary
 ```
 
 ### Deep Extraction (design-setup with libraries, Level 3)
