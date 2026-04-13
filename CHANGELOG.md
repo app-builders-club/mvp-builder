@@ -2,6 +2,29 @@
 
 All notable changes to MVP Builder will be documented in this file. The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.0.8] - 2026-04-13
+
+### Added
+
+**Skills**
+- `figma-extractor` — replaces `figma-design-extraction`. Three-level extraction architecture (Level 1: quick MCP, Level 2: Plugin API scripts, Level 3: library search + component properties). New tools: `use_figma`, `search_design_system`, `get_context_for_code_connect`.
+- `figma-extractor/scripts/` — read-only Plugin API scripts for Level 2: `extractVariableMetadata.js` (collections, modes, codeSyntax, scopes, aliases), `extractStyles.js` (text + effect + paint styles), `extractComponentInventory.js` (component sets + property definitions).
+- `figma-extractor/references/` — `search-strategies.md` (query patterns for library search), `data-structures.md` (output schemas for all extraction levels).
+
+**Agents**
+- `design-setup` — converted from command to agent. Multi-phase execution (Load → Validate → Extract → Resolve → Generate) with Sequential Thinking for conflict resolution, Context7 for framework docs, Figma Extractor skill for extraction. Source priority: JSON > Figma > CSS > markdown.
+
+### Changed
+
+**Documentation**
+- README.md: removed `design-generate` from pipeline diagram, Phase 1 table, and Agents section. `design-setup` moved from commands to agents. Figma roundtrip simplified to `design-setup ↔ Figma` (no intermediate agent).
+
+### Removed
+
+- `figma-design-extraction` skill — replaced by `figma-extractor` with Level 1/2/3 architecture
+- `design-generate` agent — removed from README (was deleted from repo in previous work)
+- `/docs:design-setup` command — replaced by `design-setup` agent
+
 ## [0.0.7] - 2026-04-10
 
 ### Added
@@ -167,6 +190,7 @@ Full consistency audit of CLAUDE.md + all rules:
 - Skills Registry for automatic skill matching
 - Cross-platform installation scripts (bash, PowerShell)
 
+[0.0.8]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.8
 [0.0.7]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.7
 [0.0.6]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.6
 [0.0.5]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.5
