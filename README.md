@@ -64,8 +64,7 @@ flowchart LR
         PRD["prd"] --> DSETUP["design-setup"]
         DSETUP --> FEATURE["feature"]
         FEATURE --> CLARIFY["clarify"]
-        DSETUP -.->|"to Figma"| DGEN["design-generate"]
-        DGEN -.->|"from Figma"| DSETUP
+        DSETUP -.->|"Figma roundtrip"| DSETUP
     end
     
     subgraph DESIGN ["Design"]
@@ -96,14 +95,13 @@ Transform product idea into structured specifications.
 | Command / Agent | Output | Purpose |
 |---------|--------|---------|
 | `/docs:prd` | `PRD.md`, `references/` dir | Product vision, audience, core problem |
-| `/docs:design-setup` | `references/design-system.md`, `tokens/`, `style-guide.md` | Normalize design generator output, extract from Figma |
-| `design-generate` | Figma file with editable layers | Validate HTML references, fix token inconsistencies, push to Figma |
+| `design-setup` | `references/design-system.md`, `tokens/`, `style-guide.md` | Normalize design references, extract from Figma |
 | `/docs:feature` | `spec.md`, `FEATURES.md` | Feature specs with requirements (FR-XXX, UX-XXX) |
 | `/docs:clarify` | Updated `spec.md` | Resolve ambiguities through targeted questions |
 
-**After `/docs:prd`**: Add supplementary materials to `ai-docs/references/` — design systems, tokens, schemas, API contracts, style guides, screenshots. Run `/docs:design-setup` to normalize raw generator output.
+**After `/docs:prd`**: Add supplementary materials to `ai-docs/references/` — design systems, tokens, schemas, API contracts, style guides, screenshots. Run `design-setup` agent to normalize raw generator output.
 
-**Figma roundtrip** (optional): `design-generate` pushes HTML references into Figma for designer review. After refinement in Figma, run `/docs:design-setup [figma-url]` to extract changes back. Repeat until design is locked.
+**Figma roundtrip** (optional): Run `design-setup [figma-url]` to extract tokens and screens from Figma. Refine in Figma, then re-run `design-setup [figma-url]` to pull changes back. Repeat until design is locked.
 
 ### Phase 2: Design
 
@@ -149,7 +147,7 @@ Specialized agents execute tasks across pipeline phases:
 
 | Agent | Role | When to use |
 |-------|------|-------------|
-| `design-generate` | Push HTML to Figma | After `/docs:design-setup`, sends validated references to Figma for designer review |
+| `design-setup` | Normalize design references, extract Figma | When user adds design references to `ai-docs/references/` or provides a Figma URL |
 
 **Build phase:**
 
