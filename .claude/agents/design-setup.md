@@ -133,6 +133,18 @@ Focus on token format and configuration — not full API. This informs how to no
 - No URL, `mcp__figma__whoami` succeeds → **Figma Available** (can extract variables without URL)
 - No URL, no MCP → **Figma Mode OFF**
 
+### 0.7 Load Previous State (Roundtrip Detection)
+
+Check if normalized artifacts already exist:
+
+```bash
+ls ai-docs/references/design-system.md ai-docs/references/style-guide.md 2>/dev/null
+```
+
+If found → this is a **re-run** (roundtrip scenario: designer updated Figma, or new token files added). Load previous versions into memory for comparison in Phase 4.
+
+Store as `PREVIOUS_DESIGN_SYSTEM` and `PREVIOUS_STYLE_GUIDE`. These are used in Phase 4.7 to generate a Changes Report showing exactly what changed (ADD / UPDATE / REMOVE) per token, style, and rule.
+
 ## Phase 1: Cross-Source Validation
 
 ### 1.1 Parse All Token Sources
@@ -274,7 +286,7 @@ Fill template section by section:
 - **Shadows**: from matrix + Figma effect styles (Level 2)
 - **Animation**: from matrix
 - **Breakpoints**: from matrix
-- **Components**: from Figma component inventory (Level 2) or "populated during UI specification"
+- **Components**: from Figma component inventory (Level 2) with property classification, or "populated during UI specification"
 
 Rules:
 - Every Value cell populated — never "undefined", never empty
@@ -282,9 +294,25 @@ Rules:
 - Empty sections removed entirely
 - Framework-specific column included only if framework detected
 
+**Platform-specific codeSyntax generation:** If Figma `codeSyntax` is empty for a token (designer didn't set it), auto-generate platform naming based on PRD platform:
+
+| PRD Platform | Naming Convention | Example for `color/primary/500` |
+|---|---|---|
+| Web (React/Next/Vue) | CSS custom property | `var(--color-primary-500)` |
+| iOS (SwiftUI) | dot-notation extension | `Color.primary500` |
+| Android (Compose) | camelCase resource | `colorPrimary500` |
+| Flutter | camelCase static | `AppColors.primary500` |
+| Cross-platform | Include all applicable | WEB + iOS + Android columns |
+
+Mark auto-generated codeSyntax with `†` footnote to distinguish from designer-set values.
+
+**Quality signals integration:** If Figma extraction returned quality warnings (hardcoded colors, orphan variables, inconsistent spacing), include a Quality Notes section at the bottom of design-system.md. This alerts downstream consumers to tokens that may need designer review.
+
+**Usage-based token ordering:** When Figma extraction includes `usageCount`, order tokens within each category by usage frequency (most used first). This helps downstream agents prioritize high-impact tokens.
+
 ### 4.3 Generate style-guide.md
 
-**Input:** Spec-markdown files + design-system.md tokens + PRD constraints + resolution log
+**Input:** Spec-markdown files + design-system.md tokens + PRD constraints + resolution log + Figma usage data
 
 Transform source Do's/Don'ts into AI-actionable rules. Every rule binds to concrete token names:
 
@@ -293,6 +321,14 @@ Transform source Do's/Don'ts into AI-actionable rules. Every rule binds to concr
 ❌ "Use appropriate colors for buttons"
 ❌ "Do: Use primary color for CTAs" (missing token binding)
 ```
+
+**Usage-informed rules:** When Figma extraction includes `usedIn` data, generate rules that reflect actual usage patterns:
+
+```
+✅ "CTA buttons: background `color-primary-600` (used in: Button/fill, FAB/fill, CTA/fill)"
+```
+
+This transforms abstract style rules into concrete, verifiable instructions backed by evidence from the design file.
 
 Include Changes Applied section with ALL patches, resolutions, and skips.
 
@@ -330,6 +366,26 @@ Validate against template's Review Checklist before finalizing:
 
 If any check fails → fix before proceeding.
 
+### 4.7 Generate Changes Report (Re-run Only)
+
+**Skip if `PREVIOUS_DESIGN_SYSTEM` and `PREVIOUS_STYLE_GUIDE` are empty** (first run).
+
+Compare newly generated artifacts against previous versions. For each token, style, rule, and component:
+
+| Category | Change | Format |
+|---|---|---|
+| Token added | `ADD` | `ADD: color/accent-500 = #8B5CF6 (from Figma variables)` |
+| Token value changed | `UPDATE` | `UPDATE: color-primary-500: #3B82F6 → #2563EB (source: Figma)` |
+| Token removed | `REMOVE` | `REMOVE: color-warning-300 (was in previous, absent from all sources)` |
+| Style rule added | `ADD` | `ADD: rule "Destructive buttons use color-error-600"` |
+| Style rule updated | `UPDATE` | `UPDATE: CTA radius changed radius-md → radius-lg` |
+| Component added | `ADD` | `ADD: component Tooltip (3 variants)` |
+| Component property changed | `UPDATE` | `UPDATE: Button added "Loading" state variant` |
+
+Never auto-apply REMOVE — flag for user confirmation. Tokens may have been intentionally removed from Figma but still needed in code.
+
+Write report to `ai-docs/references/changes-report.md` and include summary in output.
+
 ## Output
 
 ```
@@ -346,6 +402,7 @@ Generated:
 ✓ style-guide.md — [N] rules with token bindings
 ✓ tokens/ — original files preserved
 [✓ screens/index.md — [N] screens captured] (if Figma)
+[✓ changes-report.md — [N] changes detected] (if re-run)
 
 Validation:
 ✓ Token Completeness
@@ -357,6 +414,13 @@ Changes Applied:
   Patches: [N] undefined values resolved
   Conflicts: [N] resolved ([N] auto, [N] user)
   Skipped: [N] tokens excluded
+
+[Changes Since Last Run:                          ] (if re-run)
+[  Added: [N] tokens, [N] rules, [N] components  ]
+[  Updated: [N] tokens, [N] rules                 ]
+[  Removed: [N] flagged for review                 ]
+
+Quality Signals: [N] warnings from Figma extraction (if any)
 
 Next: /docs:feature or /docs:ux
 ═══════════════════════════════════════════════════
@@ -379,3 +443,4 @@ Next: /docs:feature or /docs:ux
 - Never proceed with undefined values in output — patch or escalate
 - Never generate style-guide rules without token bindings
 - Never skip Review Checklist
+- Never treat small token deltas as "close enough" — if Figma says 20 and source says 16, that is a conflict to resolve, not a rounding difference
