@@ -30,6 +30,17 @@ Design decisions (typography, color system, component libraries, animations, ass
 - Semantic color tokens in CSS variables — concrete values defined per project, not in this rule
 - Plan dark mode from project start — implement both themes before delivery
 
+## Design System References
+
+When `ai-docs/references/design-system.md` exists, it is the token source of truth. Universal consumption rules are in `design.md` — this section covers web-specific mapping.
+
+- **Colors:** Map design-system.md color tokens to CSS custom properties in `:root` / `[data-theme="dark"]`, then reference via Tailwind config `extend.colors`. Never duplicate values — single source in CSS variables.
+- **Typography:** Map font tokens to `next/font` setup. Use design-system.md font-family, then apply weights/sizes via Tailwind `extend.fontSize` or direct `text-[size]` classes. If design-system.md specifies a Google Font not yet loaded — add via `next/font/google`.
+- **Spacing:** Map spacing tokens to Tailwind `extend.spacing` if project needs non-standard scale. Otherwise use default Tailwind scale (`space-sm: 8px` → `gap-2`). Never arbitrary values (`mt-[13px]`) when a token rounds to a scale step.
+- **Shadows/Radius:** Map to Tailwind `extend.boxShadow` / `extend.borderRadius`. Reference by semantic name (`shadow-card`, `rounded-md`).
+- **Icons:** Use Iconify/Lucide per `design.md`. Don't import new icon packages unless project already uses them.
+- **Components:** Check shadcn/ui for matching base component before building custom. Map design-system.md component variants to component props or Tailwind variant classes.
+
 ## Testing
 
 ### Stack

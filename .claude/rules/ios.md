@@ -317,33 +317,25 @@ Always use modern equivalents:
 
 ### Design System References
 
-When `ai-docs/references/` contains pipeline artifacts (`design-system.md`, `style-guide.md`, `screens/`), follow these rules during implementation:
+Universal rules for consuming `ai-docs/references/` artifacts are in `design.md`. This section covers iOS-specific token mapping.
 
-**Token consumption priority:** If design-system.md provides `codeSyntax.iOS` for a token — use that exact name. If codeSyntax is empty or auto-generated (marked `†`) — check project conventions before adopting.
+**Colors:** Map tokens to Asset Catalog named colors with Any/Dark appearances — not code-based `colorScheme` switching. Never inline `Color(hex:)` — always reference project token (`Color.primaryText`, `Color("primary500")`). If project already has a color system, map by matching values first, then semantic names.
 
-**Colors:** Map design-system.md color tokens to Asset Catalog named colors with Any/Dark appearances for adaptive variants — not code-based `colorScheme` switching. Never inline `Color(hex:)` — always reference project token (`Color.primaryText`, `Color("primary500")`). If project already has a color system, map by matching values first, then semantic names.
-
-**Typography:** Map to `Font` extensions or shared typography enum. If Figma specifies a custom font, verify it exists in project's Info.plist `UIAppFonts`. Always back with `@ScaledMetric` or Dynamic Type-aware sizes.
+**Typography:** Map to `Font` extensions or shared typography enum. If design-system.md specifies a custom font, verify it exists in project's Info.plist `UIAppFonts`. Always back with `@ScaledMetric` or Dynamic Type-aware sizes.
 
 **Spacing:** Map to `CGFloat` constants in a shared enum. Use directly in `.padding()` and `spacing:` parameters — never inline magic numbers that exist as tokens.
 
-**Shadows/Radius:** Map to View extension methods (`.shadowMd()`) or constant enums. When design-system.md radius equals 9999/"full" — use `Capsule()`.
+**Shadows/Radius:** Map to View extension methods (`.shadowMd()`) or constant enums. When radius equals 9999/"full" — use `Capsule()`.
 
-**Components:** Before creating new views, check existing codebase for matching components. Design-system.md `propertyClassification` guides pattern:
-- `state` properties (Default/Pressed/Disabled) → system mechanisms (`ButtonStyle.configuration.isPressed`, `@Environment(\.isEnabled)`, `@FocusState`). Custom enum only for non-system states (Loading, Error, Empty).
+**Components (iOS-specific patterns):**
+- `state` properties → `ButtonStyle.configuration.isPressed`, `@Environment(\.isEnabled)`, `@FocusState`. Custom enum only for non-system states (Loading, Error, Empty).
 - `size` properties → `.controlSize()` for system controls, custom enum for custom components.
-- `style` properties (Primary/Secondary) → single style with enum when differences are colors/borders only, separate styles when layout differs.
-- `content` toggles (HasIcon, ShowBadge) → optional parameters.
+- `style` properties → single style with enum when differences are colors/borders only, separate styles when layout differs.
+- `content` toggles → optional parameters or `@ViewBuilder` generics.
 
-**Style guide rules:** Token bindings in style-guide.md are concrete instructions — apply exactly. `usedIn` data confirms where tokens apply, not suggestions to limit scope.
+**Assets:** SF Symbols over Figma icons for standard UI elements (arrows, close, settings, search, person, bell). Raster assets → Asset Catalog @1x/@2x/@3x. Vector icons → SVG with Preserve Vector Data. Don't import new icon/image packages unless project already uses them.
 
-**Screen references:** Screenshots in `screens/` are visual truth for validation. Skip system-provided elements visible in screenshots (keyboard, status bar, home indicator, navigation bar back button, system tab bar).
-
-**Figma design context from MCP** is a specification, not code to port. Read design properties and build native SwiftUI — never translate React/Tailwind output literally.
-
-**Asset handling:** SF Symbols over Figma icons for standard UI elements (arrows, close, settings, search, person, bell). Raster assets → Asset Catalog @1x/@2x/@3x. Vector icons → SVG with Preserve Vector Data. Don't import new icon/image packages unless project already uses them.
-
-**Usage-ordered tokens:** When design-system.md orders tokens by `usageCount`, high-frequency tokens are core to the design — prioritize their adoption in shared components.
+**System elements to skip in screenshots:** keyboard, status bar, home indicator, navigation bar back button (provided by NavigationStack), system tab bar (native TabView), system alerts/action sheets, share sheet, pull-to-refresh indicator.
 
 ### Liquid Glass (iOS 26+)
 
