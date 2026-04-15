@@ -2,6 +2,20 @@
 
 All notable changes to MVP Builder will be documented in this file. The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.0.9] - 2026-04-15
+
+### Added
+
+- `CLAUDE.md`: Goal Transformation, Surgical Changes sections; subagent key-files convention
+- `design.md`: Pipeline Artifacts Consumption — token mapping, style guide bindings, screen references, component patterns
+- `frontend.md`, `ios.md`: Design System References — platform-specific token mapping from design-system.md
+- `code-analyzer`: Step 3 "Trace Patterns" — execution path tracing, abstraction layers, reuse opportunities, key files output
+
+### Changed
+
+- `CLAUDE.md`: Simplification rewritten with concrete anti-patterns; When uncertain rewritten with explicit assumption surfacing
+- `settings.json`: extended env vars for tool configuration, enabled LSP and PR review plugins
+
 ## [0.0.8] - 2026-04-13
 
 ### Added
@@ -190,6 +204,7 @@ Full consistency audit of CLAUDE.md + all rules:
 - Skills Registry for automatic skill matching
 - Cross-platform installation scripts (bash, PowerShell)
 
+[0.0.9]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.9
 [0.0.8]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.8
 [0.0.7]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.7
 [0.0.6]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.6
