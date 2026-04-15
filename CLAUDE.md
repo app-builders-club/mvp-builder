@@ -22,6 +22,7 @@ Agents execute from existing specs — they do not re-plan.
 - TodoWrite: track progress on existing tasks only, never create new plans
 - Sequential Thinking: use for debugging and complex logic, not for upfront analysis of entire features
 - Context7: fetch docs when hitting unfamiliar API, not preemptively for all libraries
+- Subagents: request list of key files in return, read them after completion — don't re-scan independently
 - If task has clear requirements and single-file scope — start coding immediately
 
 ### Focus
