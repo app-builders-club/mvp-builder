@@ -107,6 +107,37 @@ color-blue-600          →  color-primary        →  button-bg
 AI generation only when custom branded asset needed and no free alternative exists.
 Never use emojis as structural icons — always vector icons.
 
+## Pipeline Artifacts Consumption
+
+When `ai-docs/references/` contains generated artifacts (`design-system.md`, `style-guide.md`, `screens/`), these are the source of truth for implementation. Platform-specific mapping rules live in `frontend.md` (web) and `ios.md` (iOS).
+
+### Token Mapping
+
+- If design-system.md provides `codeSyntax` for a token — use that exact name in code. Auto-generated codeSyntax (marked `†`) should be verified against project conventions.
+- Map tokens to platform abstractions (CSS variables, Asset Catalog, enums) — never inline raw values that exist as tokens.
+- When tokens are ordered by `usageCount`, high-frequency tokens are core to the design — prioritize their adoption in shared components.
+- Tokens with quality warnings (hardcoded colors, orphan variables) may need designer review before adoption.
+
+### Style Guide
+
+- Token bindings in style-guide.md are concrete instructions — apply exactly, not as suggestions.
+- `usedIn` data confirms where tokens are actually applied in the design — use for verification, not to limit scope.
+
+### Screen References
+
+- Screenshots in `screens/` are visual truth for validation during implementation.
+- Skip system-provided elements visible in screenshots — they are rendered by the platform, not implemented by code. Examples: keyboard, status bar, home indicator (iOS); browser chrome, scrollbar (web).
+
+### Components
+
+- Before creating new components, check existing codebase for matching views. Reuse over recreation.
+- Design-system.md `propertyClassification` guides implementation pattern:
+  - `state` (Default/Pressed/Disabled) → use platform system state mechanisms before custom enums
+  - `size` (Small/Medium/Large) → platform size APIs or custom enum
+  - `style` (Primary/Secondary) → single component with parameter when differences are cosmetic, separate components when structure differs
+  - `content` toggles (HasIcon, ShowBadge) → optional parameters
+- Figma design context from MCP is a specification, not code to port. Read design properties and build native platform code — never translate framework-specific output literally.
+
 ## Non-negotiable Rules
 
 ### Accessibility

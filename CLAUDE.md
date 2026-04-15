@@ -22,6 +22,7 @@ Agents execute from existing specs — they do not re-plan.
 - TodoWrite: track progress on existing tasks only, never create new plans
 - Sequential Thinking: use for debugging and complex logic, not for upfront analysis of entire features
 - Context7: fetch docs when hitting unfamiliar API, not preemptively for all libraries
+- Subagents: request list of key files in return, read them after completion — don't re-scan independently
 - If task has clear requirements and single-file scope — start coding immediately
 
 ### Focus
@@ -41,6 +42,13 @@ Agents execute from existing specs — they do not re-plan.
 - No test-only methods in production code
 - Tests must be isolated — no dependencies between tests
 - Test behavior, not implementation details (no internal state assertions)
+
+### Goal Transformation
+Before starting any task, convert vague requests into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write test reproducing bug, then make it pass"
+- "Refactor X" → "Verify tests pass before AND after changes"
+- If success criteria can't be defined — stop and ask for clarification
 
 ### Traceability IDs
 
@@ -70,6 +78,13 @@ Maintain references when implementing: task → requirement → entity
 - Prefer early returns over deep nesting
 - Comments explain WHY, not WHAT
 - Must pass lint/type-check before done
+
+### Surgical Changes
+- Every changed line must trace to the current task — no drive-by improvements
+- Match existing style: quotes, spacing, naming, patterns — even if you'd do it differently
+- Don't "improve" adjacent code, comments, or formatting
+- Don't refactor what isn't broken — mention it, don't fix it
+- Orphan cleanup: remove imports/variables YOUR changes made unused; leave pre-existing dead code alone
 
 ### Verification Order
 Before claiming task complete, verify in sequence:
@@ -104,9 +119,12 @@ Stop on first failure. Fix before proceeding.
 
 ### Simplification
 - No code additions without explicit request
-- Minimal diff: change only what's asked
+- No abstractions for single-use code
+- No "flexibility" or "configurability" that wasn't requested
+- No error handling for impossible scenarios
+- If 200 lines could be 50 — rewrite before committing
 - Question unexpected changes before applying
-- Fight complexity bias: simpler is better
+- Litmus test: would a senior engineer call this overcomplicated? If yes — simplify
 
 ### Self-Check
 - After generating: verify each claim
@@ -137,9 +155,12 @@ Stop on first failure. Fix before proceeding.
 - Validation fails
 
 **When uncertain:**
-- First: Apply Sequential Thinking Methodology to analyze
-- If still unclear: Ask user for clarification
-- Never assume — continue with confirmed parts while awaiting response
+- State assumptions explicitly before implementing — don't proceed on silent guesses
+- If multiple valid interpretations exist, present them with tradeoffs — don't pick silently
+- If a simpler approach exists than what was requested, say so
+- Apply Sequential Thinking for complex analysis
+- If still unclear: ask user for clarification
+- Continue with confirmed parts while awaiting response
 
 **If operation fails:**
 1. HALT immediately
