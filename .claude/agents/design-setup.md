@@ -38,7 +38,7 @@ You are a design setup agent. You normalize design references and extract Figma 
 - PRD: `ai-docs/PRD.md` (required — product context)
 - References: `ai-docs/references/` (generator output — token files, specs, HTML)
 - Figma URL: from user message (optional — enables Figma extraction)
-- Template: `design-setup-template.md`
+- Template: `.claude/templates/design-setup-template.md`
 
 # Pipeline Position
 
@@ -270,7 +270,7 @@ Track every resolution for the Changes Applied section:
 
 ### 4.1 Load Template
 
-Read `design-setup-template.md` for output structure.
+Read @.claude/templates/design-setup-template.md for output structure.
 
 ### 4.2 Generate design-system.md
 

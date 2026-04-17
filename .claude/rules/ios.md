@@ -589,6 +589,143 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 
 ---
 
+## Networking
+
+- Default `URLSession.shared` only for simple one-off GETs with no auth requirements
+- Create configured `URLSession` instance per logical task class — long downloads, ephemeral, and background use cases need separate configurations
+- `URLSessionConfiguration.ephemeral` for auth flows and sign-in — no cookie/cache persistence
+- `URLSessionConfiguration.background(withIdentifier:)` for uploads/downloads that must survive app suspension — never for foreground API calls
+- Always set explicit `timeoutIntervalForRequest` — OS default (60s) is too long for UI-triggered calls; typical: 15–30s
+- Set `timeoutIntervalForResource` as total transfer budget, separate from per-request timeout
+- Cancel `URLSessionTask` on view dismissal — orphaned tasks continue network activity and drain battery
+- Use `task.priority` (`URLSessionTask.highPriority` / `defaultPriority` / `lowPriority`) to separate visible from prefetched content
+- Pin certificates for connections to your own backend — `URLSessionDelegate.urlSession(_:didReceive:completionHandler:)` with explicit `SecTrustEvaluateWithError`
+- Never disable ATS globally via `NSAllowsArbitraryLoads` — use per-domain `NSExceptionDomains` with documented justification
+- Prefer Swift Concurrency: `URLSession.shared.data(for:)` / `download(for:)` / `upload(for:from:)` over closure-based APIs
+- Never use `NSURLConnection` — deprecated long ago, never in new code
+
+## Background Tasks
+
+- `BGAppRefreshTask` for short periodic refresh (≤30s budget) — feeds, notifications, status
+- `BGProcessingTask` for longer conditional work (minutes, requires power/network conditions) — ML updates, database compaction
+- Register all task identifiers in `Info.plist` under `BGTaskSchedulerPermittedIdentifiers` — unregistered identifiers fail silently at submission
+- Register handlers in `application(_:didFinishLaunchingWithOptions:)` before any `submit()` call — late registration returns false
+- `BGTaskScheduler.shared.submit()` throws on failure — handle and log, don't `try?`
+- Always implement `expirationHandler` — set a cancellation flag, check before continuing work, persist progress before returning
+- Background `URLSession` (via `URLSessionConfiguration.background`) handles large transfers independently — don't wrap them in BGTasks
+- `earliestBeginDate` is a hint only — system scheduler decides actual execution based on user patterns, battery, network
+- Never assume task runs at requested interval — design for best-effort execution
+- Debug via lldb after backgrounding: `e -l objc -- (void)[[BGTaskScheduler sharedScheduler] _simulateLaunchForTaskWithIdentifier:@"com.example.task"]`
+
+## Keychain & Data Protection
+
+### Accessibility Classes
+
+- `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` — default for auth tokens; accessible while unlocked, not restored to new device
+- `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` — tokens needed by background fetch/refresh while device is locked (after first unlock post-reboot)
+- `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly` — highly sensitive items; requires user passcode set, removed if passcode disabled
+- Never omit `ThisDeviceOnly` suffix unless intentionally syncing to iCloud Keychain (rare)
+
+### Secure Enclave & Biometrics
+
+- Secure Enclave for keys that must never leave hardware: `kSecAttrTokenID: kSecAttrTokenIDSecureEnclave` — keys cannot be extracted
+- Biometric-gated access via `LAContext` + `kSecAttrAccessControl` with `biometryCurrentSet` — invalidates on biometric enrollment change
+- `biometryAny` allows fallback to any enrolled biometric; `userPresence` permits passcode fallback
+
+### Keychain Non-negotiables
+
+- Main-thread Keychain queries only for small trivial reads — large queries block
+- Delete all app Keychain items on sign-out — Keychain persists across app reinstalls, creating stale credential leaks
+- Never store raw passwords, only derived tokens — password should never appear in Keychain
+
+### Data Protection Classes (file level)
+
+Complement to File Storage Locations section:
+- `.complete` — data inaccessible while device locked; use for user-private content not needed in background
+- `.completeUntilFirstUserAuthentication` — accessible after first unlock post-reboot; use for background-accessed data
+- `.completeUnlessOpen` — file remains accessible to holding process even after lock; limited use cases
+- Never `.none` for user-generated content — disables encryption-at-rest
+
+## App Lifecycle & Scene Protection
+
+- Use Scene-based lifecycle (`UIWindowSceneDelegate`) on iOS 13+ — `UIApplicationDelegate` lifecycle methods fire inconsistently in multi-scene apps
+- `sceneWillResignActive` — mask sensitive content before app switcher captures snapshot (overlay blur view, hide sensitive labels)
+- `sceneDidBecomeActive` — unmask, verify auth state (session may have expired during background)
+- `sceneDidEnterBackground` — persist unsaved work, stop timers, cancel non-background `URLSessionTask` instances
+- `applicationProtectedDataWillBecomeUnavailable` — save pending changes before file protection locks files
+- `applicationProtectedDataDidBecomeAvailable` — resume work requiring file access
+- State restoration via `NSUserActivity` over legacy `UIViewControllerRestoration` — type-safe, scene-aware
+- Never show sensitive content in notification previews on locked screen without user opt-in — default to generic "New message"
+- Widget content is public — never render PII, balances, or private messages in widget body
+- `UIApplication.willTerminateNotification` is unreliable — don't rely on it for persistence; persist on `didEnterBackground` instead
+
+## Media Pickers & Image Processing
+
+### Media Selection
+
+- `PhotosPicker` (SwiftUI, iOS 16+) for library access — no Photos permission required, user picks inside picker sandbox
+- `PHPickerViewController` (UIKit equivalent, iOS 14+) — same permission-free access
+- Never `UIImagePickerController` for library access in new code — requires full Photos permission
+- `UIImagePickerController` remains appropriate for simple camera capture when `AVCapturePhotoOutput` is overkill
+- `UIDocumentPickerViewController` for file system access — no permission required, scoped URL bookmark
+- Request `NSPhotoLibraryAddUsageDescription` only when writing to library (not reading) — scoped to "Add Only" access
+- Request `NSCameraUsageDescription` before first camera use with clear pre-prompt rationale
+
+### Image Downsampling
+
+- Never decode full-resolution `UIImage(contentsOfFile:)` for thumbnail display — entire bitmap loads into RAM
+- Use `ImageIO` + `CGImageSourceCreateThumbnailAtURL` for at-target-size decode
+- `kCGImageSourceThumbnailMaxPixelSize` = `max(targetSize.width, targetSize.height) * UIScreen.main.scale`
+- `kCGImageSourceCreateThumbnailFromImageAlways: true` — generate thumbnail even when image has no embedded thumb
+- `kCGImageSourceShouldCacheImmediately: true` — decode now on background thread, avoid main-thread decode on first display
+- Never decode on main thread — dispatch to background priority
+- `PhotosPicker` result via `loadTransferable(type: Data.self)` — downsample via ImageIO before rendering
+
+### Video & Audio
+
+- `AVPlayer` for playback — never `MPMoviePlayerController` (long deprecated)
+- `AVAssetExportSession` for format/quality conversion — always run on background queue
+- `AVAssetWriter` for real-time composition and encoding
+- Preload asset metadata via `AVAsset.load(.tracks, .duration)` async (iOS 16+) before presenting playback UI
+
+## Privacy Manifests & Tracking
+
+### Privacy Manifest (PrivacyInfo.xcprivacy)
+
+Required in app bundle since Spring 2024 — App Store rejects missing or invalid manifests.
+
+Declare all Required Reason API usage with valid reason codes:
+- `UserDefaults` — `CA92.1` (standard access) or `1C8F.1` (app group sharing)
+- File timestamps — `C617.1` (display to user), `DDA9.1` (inside container)
+- System boot time — `35F9.1` (audio/video quality)
+- Disk space — `E174.1` (write operation), `85F4.1` (display to user)
+- Active keyboard — `3EC4.1` (custom keyboard app)
+
+Declare all collected data types with:
+- Purpose (analytics, app functionality, product personalization, etc.)
+- Linked-to-user vs unlinked
+- Used for tracking vs not
+
+Third-party SDKs must ship their own `PrivacyInfo.xcprivacy` — audit SDK manifests before integration, reject SDKs without manifests.
+
+### App Tracking Transparency (ATT)
+
+- Request `ATTrackingManager.requestTrackingAuthorization` before accessing IDFA via `ASIdentifierManager`
+- `NSUserTrackingUsageDescription` required in `Info.plist` — without it, the request fails silently with denied status
+- Request on first tracking need with clear pre-prompt rationale screen — never at app launch
+- Check `.trackingAuthorizationStatus` before every IDFA access — user can change permission at any time
+- Respect denial — never use fingerprinting, server-side tracking, or other identifiers to circumvent user choice (Apple rejects apps that do this)
+- SKAdNetwork (`SKAN`) for attribution without user identification — does not require ATT
+
+### Privacy-Preserving APIs
+
+- `Sign in with Apple` — users can hide email, rotates relay address
+- SKAdNetwork for install/engagement attribution without tracking
+- `UIPasteboard.detectPatterns(for:)` (iOS 16+) — check clipboard content type without reading, avoids "Pasted from X" banner
+- `NSLocalizedString` over inspecting device locale — respects user language without reading region settings
+
+---
+
 ## File Storage Locations
 
 - **Documents/** — user-created content only. Backed up. Never purged.
@@ -598,7 +735,7 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 - Never store re-downloadable content (images, podcasts) in Documents — bloats backup, risks App Store rejection.
 - Mark downloaded content with `isExcludedFromBackup = true` if stored outside Caches.
 - Check `volumeAvailableCapacityForOpportunisticUsage` before caching optional content.
-- `.completeFileProtection` files inaccessible when device locked — use `.completeUntilFirstUserAuthentication` for background-accessed files.
+- For file-level encryption and protection class selection, see Keychain & Data Protection section.
 
 ## Performance Notes
 
@@ -612,8 +749,8 @@ Order: assertions → `@Test` declarations → suite organization → parameteri
 ## Hygiene
 
 - Never include secrets/API keys in the repository. Use Keychain or server-side proxy.
-- Auth tokens in Keychain (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`), never `UserDefaults`/`@AppStorage`.
-- `PrivacyInfo.xcprivacy` required — declare all Required Reason API usage (UserDefaults, file timestamps, disk space, boot time). App Store rejects without it since Spring 2024.
+- Auth tokens in Keychain — see Keychain & Data Protection section for accessibility class selection.
+- `PrivacyInfo.xcprivacy` required — see Privacy Manifests & Tracking section for required reason codes.
 - Code comments where logic isn't self-evident.
 - Unit tests for core logic. UI tests only where unit tests aren't possible.
 - No third-party frameworks without asking first.
