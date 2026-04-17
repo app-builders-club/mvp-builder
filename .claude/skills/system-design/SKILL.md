@@ -1,100 +1,73 @@
 ---
 name: system-design
-description: Architectural analysis framework for features and products. Classifies the subject into categories (data-heavy, real-time, offline-critical, media-heavy, integration-heavy, low-bandwidth), loads relevant domain references (offline sync, pagination, real-time protocols, caching, API selection, server-driven UI, cross-platform, media upload, network optimization, data modeling), conducts targeted non-functional requirements dialogue, and produces structured architectural decisions grounded in real-world engineering case studies (Slack, Airbnb, Dropbox, Dan Lew sync series, Instagram, Netflix, Facebook Lite). Use whenever a feature or product needs architectural analysis — selecting between protocol/storage/sync trade-offs, deciding pagination or caching strategy, evaluating offline-first requirements, choosing real-time transport, planning for emerging markets or low bandwidth, reasoning about scale tiers and consistency requirements. Triggers on tasks involving architectural decisions, technical strategy, system design interviews, NFR formulation, technology trade-off analysis, or when the question "how should this be designed?" requires an answer grounded in real engineering outcomes rather than generic advice.
+description: Decision tree for architectural trade-offs during document generation (PRD, feature spec, technical plan). Classifies the subject into categories (data-heavy, real-time, offline-critical, media-heavy, integration-heavy, cross-platform, frequent UI iteration), loads the minimum relevant references, conducts a targeted NFR dialogue with opinionated defaults, and returns structured decisions (Required Behaviors, Architectural Decisions, Open Questions) that the caller command integrates into its artifact. Use whenever architectural choices must be committed to a document — protocol selection, pagination or caching strategy, offline sync approach, real-time transport, cross-platform platform choice. Produces decisions, not implementation rules. Implementation details belong in code-level rules files.
 ---
 
-# System Design Methodology
+# System Design Decision Tree
 
-Decision-tree framework for producing non-functional requirements and architectural decisions grounded in real-world engineering case studies.
+Architecture-level decision tree invoked by doc-generation commands. Takes a feature or product description, returns structured trade-off decisions for the caller to insert into its artifact (PRD / feature / plan).
 
-This skill is pure expertise. It does not read or write project files, does not know about calling commands, and does not manage identifiers. It receives context describing a system or feature, and returns a structured architectural analysis. Callers apply the output to their own artifacts.
-
----
-
-## How This Skill Works
-
-**Input:** free-form context describing a feature, product, or system. Could be a draft spec, a PRD, a user description, or a design sketch.
-
-**Output:** single canonical markdown block containing required behaviors, architectural decisions, and open questions.
-
-**Core loop:** triage the context → load relevant references → conduct targeted NFR dialogue → synthesize decisions.
-
-Every step below is general — nothing here depends on which command called the skill, what format the caller expects, or where the output will be stored.
+This skill is pure expertise. It does not read or write project files, does not know which command invoked it, and does not assign identifiers. Decisions it produces are architectural (choose pattern X over pattern Y because of trade-off Z). Implementation rules (timeouts, library choices, API shapes) live in code-level rules files and are out of scope here.
 
 ---
 
-## Step 1: Triage the Context
+## How It Works
 
-Classify the subject into one or more categories. Multi-category is the norm — a chat feature is simultaneously real-time, offline-critical, and media-heavy.
+**Input:** free-form description of the feature or product. May be a draft spec, a section of a PRD, a user description.
 
-### Categories
+**Output:** single markdown block — `### System Design Analysis` with `#### Required Behaviors`, `#### Architectural Decisions`, `#### Open Questions`. Caller integrates into its artifact.
 
-| Category | Signals in context | References to load |
-|----------|---------------------|---------------------|
-| Simple CRUD | Single resource, basic forms, no collaboration, no real-time, no media | none beyond nfr-taxonomy |
-| Data-heavy | Lists, search, filters, analytics, dashboards, feeds | pagination.md, caching.md |
-| Real-time | Chat, live feed, presence, collaboration, notifications | realtime.md |
-| Offline-critical | Must function without network, field workers, mobile-first, travel, unreliable connectivity | offline-sync.md, data-model.md, caching.md |
-| Media-heavy | Photo/video upload, streaming, galleries, attachments | media-upload.md, caching.md, network-optimization.md |
-| Integration-heavy | External APIs, webhooks, third-party auth, data sync from external systems | api-selection.md |
-| Low-bandwidth / emerging markets | Target regions with poor connectivity, metered data, low-end devices | network-optimization.md, caching.md |
-| Cross-platform strategy | Decision about native vs KMP vs React Native vs Flutter at product level | cross-platform.md |
-| Frequent UI iteration | A/B testing requirements, server-updatable UI, experiment-heavy | server-driven-ui.md |
+**Loop:** triage → load minimum references → NFR dialogue → synthesize decisions.
+
+---
+
+## Step 1: Triage
+
+Classify the subject. Multi-category is the norm — a chat-with-photos feature is real-time + offline-critical + media-heavy.
+
+| Category | Signals | References to load |
+|----------|---------|--------------------|
+| Simple CRUD | Single resource, basic forms, no collaboration, no real-time, no media | none beyond `nfr-taxonomy` |
+| Data-heavy | Lists, search, filters, dashboards, feeds | `pagination`, `caching` |
+| Real-time | Chat, live feed, presence, collaboration, push | `realtime` |
+| Offline-critical | Must work offline, field work, unreliable connectivity | `offline-and-data`, `caching` |
+| Media-heavy | Photo/video upload, streaming, galleries | `media-upload`, `caching` |
+| Integration-heavy | External APIs, webhooks, third-party sync | `api-selection` |
+| Cross-platform strategy | Choice of native vs Flutter vs web at product level | `cross-platform` |
+| Frequent UI iteration | A/B testing, server-updatable UI, rapid paywall/onboarding iteration | `server-driven-ui` |
 
 ### Triage Procedure
 
-Skim the input context for concrete signals. Signals are domain words and flow descriptions, not explicit user statements. If the input says "users chat with each other" — that's real-time, even if the user never said "real-time."
+Read the input for concrete signals. "Users chat with each other" = real-time, even if "real-time" is never said. Match signals against the table — multiple matches are expected.
 
-Match signals against the table. Multiple matches are expected and correct. A chat-with-photos feature triggers real-time + offline-critical + media-heavy simultaneously.
+Always load `references/nfr-taxonomy.md`. It is the question bank and decision foundation for every dialogue.
 
-If no signal matches, treat as Simple CRUD. Do not invent complexity that isn't there.
-
-Always load `references/nfr-taxonomy.md` — it is the foundation for dialogue and question formulation. Everything else loads only when its category matches.
-
-Never load all references. References cost context and conflate unrelated advice.
+Never load all references. Triage selects. If no category matches, treat as Simple CRUD.
 
 ---
 
 ## Step 2: Load References
 
-After triage, read the matched reference files from `references/`. Each reference is a self-contained decision tree with trade-offs, case studies, and anti-patterns.
-
-### Reference Index
-
-| File | Covers |
-|------|--------|
-| `nfr-taxonomy.md` | NFR dimensions, question bank, defaults — foundation for dialogue |
-| `api-selection.md` | REST / GraphQL / gRPC / SDUI protocol selection with Airbnb, Trello, Slack cases |
-| `pagination.md` | Cursor / offset / page-number with Slack evolution case study |
-| `offline-sync.md` | Sync strategies, conflict resolution, Dan Lew series, Atlassian Trello sync |
-| `realtime.md` | WebSocket / SSE / long-polling / push — Instagram Direct Messages patterns |
-| `caching.md` | L1/L2 hierarchy, HTTP caching, Instagram Android disk cache, prefetching |
-| `server-driven-ui.md` | SDUI trade-offs — Airbnb, DoorDash, Instacart View Model API |
-| `network-optimization.md` | Lite apps, compression, QUIC — Facebook Lite, Spotify Lite, MS Teams, Snap |
-| `media-upload.md` | Resumable uploads, chunking — Dropbox camera uploads patterns |
-| `cross-platform.md` | Native / KMP / React Native / Flutter — Dropbox contra, Cash App pro |
-| `data-model.md` | Two-ID problem, soft deletes, schema design for sync |
-
-References are designed to be read independently. Read only what triage requires. Do not pre-load in case they become useful — they will not.
+Read only the matched files from `references/`. Each reference is a decision tree with trade-off summaries and output templates. Do not pre-load references speculatively.
 
 ---
 
-## Step 3: Conduct NFR Dialogue
+## Step 3: NFR Dialogue
 
-After loading references, ask targeted questions to resolve ambiguity. The references supply the question bank; the context determines which questions matter.
+After references are loaded, ask targeted questions to resolve ambiguity. `nfr-taxonomy` supplies the question bank; context and triage determine which questions matter.
 
-### Question Count by Complexity
+### Question Count
 
-- 2–3 questions for Simple CRUD features
-- 4–6 questions for single-category complex features
-- 5–7 questions for multi-category complex features
-- Never exceed 8 questions without explicit user request
+- 2–3 questions for Simple CRUD
+- 4–6 questions for single-category features
+- 5–7 questions for multi-category features
+- Never exceed 8 without explicit user request
 
-The goal is decision convergence, not exhaustive discovery. Users dropped into a 15-question NFR interrogation abandon the process.
+Goal is decision convergence, not exhaustive discovery.
 
 ### Question Format
 
-Always multiple-choice with an explicit default. Users accept the default with "ok" or override.
+Multiple-choice with explicit default. Users accept with "ok" or override.
 
 ```
 Expected concurrent users for this feature?
@@ -104,166 +77,81 @@ Expected concurrent users for this feature?
   d) Over 1,000,000 (specialist design required)
 ```
 
-Defaults are opinionated. If the default is "no offline support" for a simple dashboard, say so and explain why. Users can override without friction.
-
 ### Question Ordering
 
-Ask in this sequence — each answer narrows downstream questions:
+Each answer narrows downstream questions:
 
-1. **Scale / volume** first — influences every downstream decision
-2. **Offline / consistency** second — affects data model, sync strategy
-3. **Performance / latency** third — affects protocol selection, caching
-4. **Specific trade-offs** last — cursor vs offset, SSE vs WebSocket
+1. **Scale / volume** — influences every downstream decision
+2. **Offline / consistency** — affects data model, sync
+3. **Performance / latency** — affects protocol, caching
+4. **Specific trade-offs** — cursor vs offset, SSE vs WebSocket
 
-Skip questions made irrelevant by earlier answers. If user picks "under 100 concurrent" at scale, drop questions about CDN strategy or distributed sync — both overkill at that scale.
-
-### When References Conflict
-
-References are case studies. Dropbox says "cross-platform code sharing has hidden costs." Cash App says "Kotlin Multiplatform works well for us." Both are true — in different contexts.
-
-When references disagree, present the conflict honestly:
-
-> "Dropbox moved away from shared code between iOS and Android, citing hidden coordination costs. Cash App uses Kotlin Multiplatform successfully. The trade-off depends on team structure and feature type. For this project..."
-
-Then recommend based on the context at hand.
+Skip questions made irrelevant by earlier answers. Context that explicitly answers a dimension (e.g., "iOS app for hospital nurses" = mobile + Developed consumer) does not need to be re-asked.
 
 ---
 
 ## Step 4: Synthesize Output
 
-After dialogue, formulate the answer. The output is one canonical block regardless of who called the skill.
-
-### Output Block Format
+Single canonical block regardless of caller:
 
 ```markdown
 ### System Design Analysis
 
 #### Required Behaviors
-- [testable behavior statement with verification criteria]
+- [testable behavior with verification criterion]
 - ...
 
 #### Architectural Decisions
-- [Topic]: [chosen option]. Rationale: [why this over alternatives, referencing trade-off]. Source: [optional reference to real-world case].
+- [Topic]: [chosen option]. Rationale: [trade-off vs rejected alternative].
 - ...
 
 #### Open Questions
-- [Actionable question user must answer before implementation]
+- [Actionable question with concrete options and trade-off]
 - ...
 ```
 
-Any section can be empty. Omit empty sections entirely rather than outputting "(none)".
+Any section can be empty. Omit empty sections entirely — do not emit `(none)` placeholders.
 
-### Formulating Required Behaviors
+### Required Behaviors
 
-Required Behaviors are testable statements. The caller decides whether each becomes an FR, UX requirement, edge case, or technical constraint in their artifact. Do not label them with identifiers — that is the caller's responsibility.
+Testable statements. Each has a concrete action, a quantitative criterion where applicable, and a verification method in parentheses. No identifiers — the caller command assigns those.
 
-Every behavior follows this shape: a concrete action, a quantitative criterion where applicable, and a verification method in parentheses.
+Avoid "system should be fast". Write "system responds within 500ms at p95 under normal network (verified by performance test with 100 concurrent requests)".
 
-| NFR Dimension | Behavior Template |
-|---------------|-------------------|
-| Latency target | `System responds within Nms at p95 under normal network conditions (verified by performance test with M concurrent requests)` |
-| Offline read | `User views [content] without network connection (verified by airplane mode test)` |
-| Offline write | `System persists user actions when offline and syncs on reconnection (verified by offline queue test)` |
-| Consistency window | `[Entity] updates are visible to [audience] within N seconds (verified by integration test)` |
-| Retention | `System retains [data] for [period] (verified by retention policy test)` |
-| Error state | `System presents retry option on network failure` |
-| Sync indication | `System displays sync status when pending operations exist` |
+### Architectural Decisions
 
-Avoid statements that cannot be tested — "system should be fast" is not a behavior. "System responds within 500ms at p95" is.
+Four parts: topic, chosen option, rationale with trade-off against the rejected alternative, optional source.
 
-### Formulating Architectural Decisions
+Bad: "We use cursor pagination."
+Good: "Pagination: cursor-based. Rationale: feed is active (items added during scroll), offset would cause duplicates or skipped items."
 
-Every decision has four parts: topic, chosen option, rationale with trade-off, optional source.
+The rationale must name the alternative that was rejected and why.
 
-```
-Pagination: cursor-based with opaque tokens. Rationale: feed data is dynamic (items added frequently), offset pagination causes page drift when users scroll a changing list. Source: Slack engineering "Evolving API Pagination at Slack."
-```
+### Open Questions
 
-The rationale must reference the trade-off with the alternative that was rejected. "We use cursor pagination" is not a decision — it's an assertion. "We use cursor pagination because offset would cause page drift in a dynamic feed" is a decision.
-
-Source reference is optional but strongly preferred when a reference supplied the rationale. This makes decisions reviewable — someone can read Slack's post and verify the argument.
-
-### Formulating Open Questions
-
-Open Questions are decision points the dialogue could not resolve. Emit only when genuinely needed — if a confident default exists, pick it rather than deferring.
-
-Open Questions must be actionable. Bad:
-
-> Should we think about caching?
-
-Good:
-
-> Should cached feed items expire after 1 hour, 24 hours, or only on explicit refresh? Trade-off: shorter TTL means more network requests; longer TTL means potentially stale content.
-
-The question must name concrete options and the trade-off between them.
-
----
-
-## Output Format — Canonical Example
-
-For a feed feature with offline read requirements and real-time likes:
-
-```markdown
-### System Design Analysis
-
-#### Required Behaviors
-- System loads feed within 500ms at p95 under normal network conditions (verified by performance test with 100 concurrent requests).
-- User views the last 50 feed items without network connection (verified by airplane mode test).
-- User actions (likes, comments) persist when offline and sync on reconnection (verified by offline queue test).
-- System displays sync status indicator when pending operations exist.
-- System presents retry option on network failure.
-
-#### Architectural Decisions
-- Pagination: cursor-based with opaque tokens. Rationale: feed data is dynamic (items added frequently by other users), offset pagination would cause duplicate items or skipped items during scrolling. Source: Slack engineering "Evolving API Pagination at Slack."
-- Sync strategy: delta sync with server-generated opaque sync_token. Rationale: timestamp-based markers suffer from client clock skew; opaque tokens allow backend to change versioning logic without breaking clients. Source: Dan Lew "Syncing Changes" series.
-- Real-time transport: Server-Sent Events for live like updates, push notifications as fallback when app backgrounded. Rationale: server-to-client only (no client streaming), simpler infrastructure than WebSocket, fits through standard HTTP proxies.
-- Cache sizing: L1 memory cache at approximately 20% of available RAM for decoded bitmaps, L2 disk cache at 250MB with LRU eviction. Rationale: dominant memory cost on mobile is decoded bitmaps, not encoded bytes.
-
-#### Open Questions
-- Should cached feed items expire after 1 hour, 24 hours, or only on explicit pull-to-refresh? Trade-off: shorter TTL means more network requests and fresher content; longer TTL improves offline reliability but content may feel stale.
-- Cross-device sync required? If user likes a post on phone, should it appear liked on tablet within seconds? Affects conflict resolution complexity.
-```
+Emit only when dialogue could not resolve a decision and no confident default exists. Must be actionable: name concrete options and their trade-off. "Should we think about caching?" is not actionable. "TTL 1h vs 24h vs only-on-refresh: trade-off between freshness and offline reliability" is.
 
 ---
 
 ## Anti-Patterns
 
-These behaviors violate the skill contract.
-
-### Do not modify files
-Never use Write, Edit, or filesystem tools. The skill only reads references. All artifact manipulation belongs to the caller.
-
-### Do not invent identifiers
-Output contains no FR-001, UX-042, ADR-003, or similar. Callers assign identifiers in their own formats.
-
-### Do not know about callers
-Do not branch behavior on "if called by command X, do Y." The skill has one behavior regardless of caller. Callers adapt the output to their needs.
-
-### Do not pad with training knowledge
-If a reference was not loaded, do not introduce related concepts from general knowledge. Stay within the evidence the loaded references provide. Users who ask for Dropbox-sync-quality insight expect Dropbox-sync-quality references, not generic sync wisdom.
-
-### Do not ask what the context already answers
-Read the context first. If the PRD says "mobile iOS app for hospital ward nurses," do not ask "is this mobile?" or "is this iOS?" or "what is the environment?" Triage from context, ask only what is genuinely ambiguous.
-
-### Do not emit empty sections
-If dialogue produces no Open Questions, omit the `#### Open Questions` heading entirely. Do not output `#### Open Questions\n(none)`.
-
-### Do not load all references
-Triage selects which references to load. Loading everything pollutes the analysis with irrelevant trade-offs. A simple CRUD dashboard does not need to hear about resumable upload chunking.
-
-### Do not overreach scope
-The skill analyzes the system the user described. It does not propose new features, critique product direction, or suggest pivots. "This feature would be better as a different feature" is out of scope.
-
-### Do not collapse every feature into "it depends"
-Every decision has a recommended default based on the input. Defer to "it depends" only when the context genuinely underdetermines the choice. Users asking for a decision want a decision.
+- **Do not modify files.** The skill only reads references. Artifact manipulation belongs to the caller.
+- **Do not invent identifiers.** No FR-001, NFR-042, ADR-003. Caller assigns them.
+- **Do not branch on caller.** The skill has one behavior regardless of which command invoked it.
+- **Do not pad with training knowledge.** If a reference was not loaded, its domain is out of scope for this run.
+- **Do not ask what context already answers.** If the description says "iOS app", do not ask "is this iOS?"
+- **Do not emit empty sections.** Omit the heading entirely rather than output `(none)`.
+- **Do not load all references.** Triage selects. Loading everything pollutes analysis with irrelevant trade-offs.
+- **Do not prescribe implementation.** No specific timeouts, library names, MB thresholds, or API shapes. That is the rules files' job. Skill names the pattern; rules specify the implementation.
+- **Do not collapse every decision into "it depends".** Every trade-off has a default based on the context. Defer only when the context genuinely underdetermines the choice.
 
 ---
 
 ## Invariants
 
-- Output is valid markdown that a caller can parse
-- Required Behaviors are testable — each has a verification method or explicit observable
-- Architectural Decisions include trade-off rationale, not bare assertions
-- Open Questions are actionable with concrete options
-- References cited when a loaded reference supplied the reasoning
-- Skill works identically regardless of which command invoked it
+- Output is valid markdown parseable by the caller
+- Required Behaviors are testable (each has a verification method)
+- Architectural Decisions name the rejected alternative in the rationale
+- Open Questions are actionable (concrete options + trade-off)
+- Skill works identically regardless of caller
+- Implementation specifics never appear in skill output
