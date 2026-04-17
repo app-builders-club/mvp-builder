@@ -270,7 +270,7 @@ Track every resolution for the Changes Applied section:
 
 ### 4.1 Load Template
 
-Read `design-setup-template.md` for output structure.
+Read @.claude/templates/design-setup-template.md for output structure.
 
 ### 4.2 Generate design-system.md
 
