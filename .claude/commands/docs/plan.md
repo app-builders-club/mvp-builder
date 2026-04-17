@@ -15,7 +15,8 @@ Creates minimal supporting artifacts that complement (not duplicate) existing do
 
 **Skills:**
 - Code Analyzer: For loading existing codebase structure, dependencies, and reusable modules
-- Sequential Thinking Methodology: For complex architectural decisions and multi-step analysis
+- System Design Decision Tree: For architectural trade-offs (pagination, caching, real-time, offline, media, API protocol) — triage, question bank, decision synthesis
+- Sequential Thinking Methodology: For multi-step reasoning that is not already covered by System Design trade-offs (library compatibility, version selection, integration risks)
   - Tool: `/mcp__sequential-thinking__sequentialthinking`
 - Context7 Documentation Retrieval: For library documentation and compatibility verification
   - Tools: `/mcp__context7__resolve-library-id`, `/mcp__context7__get-library-docs`
@@ -155,6 +156,29 @@ fi
 - Include DS library from ui.md header
 - Verify alignment with PRD architecture choices
 
+**Apply System Design Decision Tree skill** for architectural trade-offs:
+
+1. Build context object for the skill:
+   - Functional scope from spec.md (FR-XXX, UX-XXX, Key Entities)
+   - Technical requirements from PRD.md (Technical Context, constraints)
+   - User flows and quantified values from ux.md
+
+2. Triage — skill classifies the feature into applicable categories (Simple CRUD, data-heavy, real-time, offline-critical, media-heavy, integration-heavy, frequent UI iteration). Multi-category is the norm.
+
+3. Skill loads matched references and returns a question bank: 2–8 multiple-choice questions with one recommended default per question, ordered by decision dependency (scale → offline → latency → specific trade-offs).
+
+4. Present questions to the user interactively, one stage at a time. For each:
+   - Show all options with the recommended option marked
+   - Show red-flag warnings when the skill flags the combination (e.g., Offline: Full + Consistency: Strong)
+   - Wait for user selection or custom override
+   - Do not auto-accept defaults — every decision must be explicitly confirmed
+
+5. Every question must be answered before proceeding. No unresolved ambiguity goes into research.md.
+
+6. Skill synthesizes final output:
+   - **Architectural Decisions** with rejected alternatives (→ research.md Key Decisions)
+   - **Required Behaviors** with verification methods (→ research.md Non-Functional Requirements)
+
 **Apply Sequential Thinking Methodology** for research analysis:
 - Analyze feature dependencies from extracted libraries
 - Evaluate compatibility with PRD stack
@@ -174,7 +198,11 @@ If no external libraries identified, skip library documentation step.
 # Research Notes - [Feature Name]
 
 ## Key Decisions (essential points only, typically 3-7)
-- **[Decision]**: [What chosen] - [Brief why, 1 sentence]
+- **[Decision]**: [What chosen] — [Brief why, 1 sentence]. Rejected: [alternative + reason] (for architectural trade-offs from System Design skill)
+
+## Non-Functional Requirements
+[Optional section — include only if System Design skill returned Required Behaviors]
+- [Testable behavior with verification method]
 
 ## Critical Risks
 - **[Risk]**: [Impact] → [Mitigation]
@@ -187,7 +215,7 @@ If no external libraries identified, skip library documentation step.
 - Architecture notes → incorporate infrastructure decisions and constraints into Key Decisions
 - If architecture notes contradict PRD → note deviation with rationale in Key Decisions
 
-NO alternatives, NO lengthy explanations, NO rejected approaches.
+NO alternatives, NO lengthy explanations, NO rejected approaches outside of architectural trade-offs.
 NO configuration details (those go in `setup.md`).
 NO implementation details (those go in `plan.md`).
 
@@ -323,7 +351,7 @@ NO justifications for dependencies (those are in research.md).
 
 **Apply Sequential Thinking Methodology** for planning synthesis:
 - Synthesize sources (PRD, spec, ux, ui, FEATURES)
-- Integrate research decisions from research.md
+- Integrate research decisions from research.md (Key Decisions + Non-Functional Requirements)
 - Incorporate entity model from data-model.md
 - Incorporate component structure from ui.md (component trees, DS mapping)
 - Include setup from setup.md and contracts from contracts/
@@ -342,7 +370,7 @@ NO justifications for dependencies (those are in research.md).
 - Ensure all ui.md components have code locations in code organization
 - Ensure all ui.md slot=true components have children/slot API in code organization
 - Check entity naming consistency across all artifacts
-- Verify storage approach aligns with spec.md requirements
+- Verify storage approach aligns with spec.md requirements AND architectural decisions from research.md
 - Ensure no constants are hardcoded (reference data-model.md)
 - Check derived values use formula comments
 - Verify all referenced types are defined in data-model.md
@@ -360,6 +388,7 @@ NO justifications for dependencies (those are in research.md).
 - If style guide reference loaded: include styling approach
 - **Storage:** Specify primary storage + any secondary storage with clear use case separation
   - Example: "PostgreSQL for entities, Redis for cache, IndexedDB for offline support"
+- **Constraints:** Include NFR constraints from research.md Non-Functional Requirements (if present)
 
 **Implementation Mapping:**
 - How requirements → components (don't repeat requirements)
@@ -372,6 +401,7 @@ NO justifications for dependencies (those are in research.md).
 - Test-first development workflow
 - Unit test structure matching code organization
 - Integration test scenarios from acceptance criteria
+- Non-functional requirements from research.md become verification tests
 - NO manual test checklists
 
 **Select Feature Code Organization:**
@@ -386,6 +416,7 @@ NO justifications for dependencies (those are in research.md).
 
 **Implementation Notes:**
 - Document critical implementation decisions, trade-offs, or considerations
+- Include architectural trade-offs from research.md Key Decisions (e.g., cursor pagination vs offset, SSE vs WebSocket)
 - If codebase exists: note which existing modules to reuse and which new ones to create
 - **Edge case handling:** Document approach for spec.md edge cases. If not all covered, note which require future iteration with rationale
 - **Scalability notes:** If feature may hit limits (data size, API rate, etc.), document threshold and mitigation strategy
@@ -406,6 +437,7 @@ Internal validation using template's Review Checklist (mental check only):
 - All constants from ux.md Quantified UX Elements included
 - All ui.md components have code locations in plan.md
 - Cross-feature dependencies properly handled
+- All architectural decisions from System Design skill have rejected alternatives noted
 
 **Final output:**
 ```
@@ -437,3 +469,5 @@ Next: /docs:tasks <feature-path>
 - **Missing dependency definition**: "Error: Entity from [feature-name] referenced but dependency data-model.md not found and no [Dependency] interface defined."
 - **Missing quantified value**: "Warning: Quantified UX Element [name] from ux.md not included in data-model.md Constants."
 - **Reference-spec conflict**: "Warning: Reference [file] conflicts with spec.md on [topic]. Spec.md takes priority."
+- **System Design unresolved questions**: "Error: Architectural decisions cannot be committed with unresolved questions. Remaining: [list]. Answer all questions before proceeding."
+- **System Design missing rejected alternative**: "Error: Architectural decision [topic] in research.md missing rejected alternative. Every trade-off must name what was rejected and why."

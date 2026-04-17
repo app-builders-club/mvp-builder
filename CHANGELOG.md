@@ -2,6 +2,19 @@
 
 All notable changes to MVP Builder will be documented in this file. The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.1.0] - 2026-04-17
+
+### Added
+
+- `system-design` skill — architectural trade-off framework: triage (data-heavy, real-time, offline, media, integration, UI iteration), question bank with recommended defaults, synthesizes decisions with rejected alternatives and testable NFRs
+- `system-design/references/` — 9 decision-tree references (nfr-taxonomy, pagination, caching, realtime, offline-and-data, media-upload, api-selection, server-driven-ui, cross-platform)
+
+### Changed
+
+- `/docs:plan` Phase 0.4 — invokes `system-design` skill before Sequential Thinking; user confirms every architectural decision via multiple-choice dialogue with defaults, no unresolved questions propagate to research.md
+- `/docs:plan` research.md template — Key Decisions format extended with `Rejected: [alternative + reason]`; new optional `## Non-Functional Requirements` section
+- `/docs:plan` — validation checks rejected alternatives present; new error cases for unresolved System Design questions and missing rejected alternatives
+
 ## [0.0.9] - 2026-04-15
 
 ### Added
@@ -204,6 +217,7 @@ Full consistency audit of CLAUDE.md + all rules:
 - Skills Registry for automatic skill matching
 - Cross-platform installation scripts (bash, PowerShell)
 
+[0.1.0]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.0
 [0.0.9]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.9
 [0.0.8]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.8
 [0.0.7]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.7
