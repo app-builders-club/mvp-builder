@@ -2,6 +2,23 @@
 
 All notable changes to MVP Builder will be documented in this file. The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.1.1] - 2026-05-17
+
+### Added
+
+**Skills**
+- `sequential-thinking/references/` — 6 references: `reasoning-modes.md` (7 inference modes + Occam's Razor), `grounding.md` (knowledge classes, ReAct, falsifiability, map-territory), `adversarial-checks.md` (steelman + pre-mortem + red team + bias checklist), `root-cause-playbook.md` (Five Whys Plus + IS/IS-NOT matrix), `multi-approach-synthesis.md` (parallel reasoning with convergence/divergence handling), `anti-patterns.md` (10 failure modes with detection signals)
+
+### Changed
+
+**Skills**
+- `sequential-thinking` — restructured around `mcp__sequential-thinking__sequentialthinking` tool. SKILL.md: trigger gate (Reversibility + System-2), Cynefin classification, order of operations, State→Action→Mechanism→Verify thought structure, branch/revise/extend with fabrication guards, satisficing convergence
+- `sequential-thinking` — hallucination defense: per-thought knowledge-class tagging (verified/believed/speculative), confidence-rise-without-evidence guard, mode-switch recheck, qualitative-only in-chain scoring
+
+### Removed
+
+- `sequential-thinking` legacy: rigid scoring (+2/-3 points), thought-budget percentages, `$ARGUMENTS` templates, in-chain confidence percentages
+
 ## [0.1.0] - 2026-04-17
 
 ### Added
@@ -217,6 +234,7 @@ Full consistency audit of CLAUDE.md + all rules:
 - Skills Registry for automatic skill matching
 - Cross-platform installation scripts (bash, PowerShell)
 
+[0.1.1]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.1
 [0.1.0]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.0
 [0.0.9]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.9
 [0.0.8]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.8
