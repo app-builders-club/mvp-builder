@@ -473,10 +473,12 @@ Never pass `NSManagedObject` between contexts or threads. Always use `NSManagedO
 
 ### Framework Choice
 
-- Swift Testing for unit and integration tests.
-- XCTest for: UI automation (`XCUIApplication`), performance metrics (`XCTMetric`), Objective-C tests.
+- Write unit tests only. No UI automation tests, no integration tests against a running simulator/device.
+- Swift Testing for unit tests.
+- XCTest only for: performance metrics (`XCTMetric`), Objective-C tests. Never for UI automation.
 - Both can coexist in the same target during migration.
 - Never test SwiftUI views directly — test `@Observable` view models or extracted business logic.
+- Never write `XCUIApplication`-based tests. UI behavior is verified manually or via unit-tested view models.
 
 ### Assertions
 
@@ -502,11 +504,11 @@ Never pass `NSManagedObject` between contexts or threads. Always use `NSManagedO
 
 ### Parallelization
 
-- Tests run in parallel by default with randomized order.
-- Fix shared-state coupling before adding `.serialized`.
-- `.serialized` only affects parameterized tests (runs argument cases one-at-a-time). Applying to non-parameterized test does nothing. Applying to suite only serializes parameterized tests inside it.
+- Run tests in a single thread (serialized). Disable parallelization at the test plan / scheme level.
+- Apply `.serialized` to the root `@Suite` so all suites and parameterized cases execute one at a time.
+- Do not rely on randomized parallel ordering — tests must produce deterministic output under serial execution.
 - Use in-memory fakes for the fast path.
-- Enable Thread Sanitizer (TSan) in a dedicated CI job to catch races that static checks miss.
+- Thread Sanitizer (TSan) remains useful for production code, but is not required for these tests since they don't run concurrently.
 
 ### Async Testing
 
@@ -530,14 +532,6 @@ Never pass `NSManagedObject` between contexts or threads. Always use `NSManagedO
 - Expose hidden dependencies (URLSession, UserDefaults) via protocol injection for testability.
 - Verification methods: pass `sourceLocation: SourceLocation = #_sourceLocation` so failures report the call site.
 - Raw identifiers (Swift 6.2): `` func `Strip HTML tags from string`() `` — suggest but don't force unless project already uses them.
-
-### XCUITest (UI Automation)
-
-- Always use `accessibilityIdentifier` for test-critical elements — never localized strings.
-- Never `sleep()` — use `waitForExistence(timeout:)` or predicate-based waits.
-- Each test independent — no shared state, no order dependency.
-- Launch with `--uitesting` and `--reset-state` arguments for clean state.
-- Test user-visible behavior, not implementation details (not `cells.count == 10`, but `staticTexts["10 items"].exists`).
 
 ### Migration from XCTest
 
@@ -752,7 +746,7 @@ Third-party SDKs must ship their own `PrivacyInfo.xcprivacy` — audit SDK manif
 - Auth tokens in Keychain — see Keychain & Data Protection section for accessibility class selection.
 - `PrivacyInfo.xcprivacy` required — see Privacy Manifests & Tracking section for required reason codes.
 - Code comments where logic isn't self-evident.
-- Unit tests for core logic. UI tests only where unit tests aren't possible.
+- Unit tests only. Never write UI tests that run on simulator or device.
 - No third-party frameworks without asking first.
 - Feature-based folder structure.
 
