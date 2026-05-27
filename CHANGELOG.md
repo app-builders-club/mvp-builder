@@ -2,6 +2,19 @@
 
 All notable changes to MVP Builder will be documented in this file. The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.1.2] - 2026-05-27
+
+### Changed
+
+**Rules**
+- `ios.md` Parallelization — reversed default: tests run single-threaded (serialized). Apply `.serialized` to root `@Suite` so all suites and parameterized cases execute one at a time. Deterministic output under serial execution required. Disable parallelization at test plan / scheme level.
+- `ios.md` Thread Sanitizer — demoted from required CI job to "useful for production code, not required for these tests since they don't run concurrently"
+- `ios.md` Testing strategy — "Unit tests only. Never write UI tests that run on simulator or device" (was: "Unit tests for core logic. UI tests only where unit tests aren't possible")
+
+### Removed
+
+- `ios.md` XCUITest (UI Automation) section — `accessibilityIdentifier` guidance, `waitForExistence(timeout:)` waits, `--uitesting`/`--reset-state` launch args, behavior-over-implementation assertions. UI testing no longer part of the iOS rule set.
+
 ## [0.1.1] - 2026-05-17
 
 ### Added
@@ -234,6 +247,7 @@ Full consistency audit of CLAUDE.md + all rules:
 - Skills Registry for automatic skill matching
 - Cross-platform installation scripts (bash, PowerShell)
 
+[0.1.2]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.2
 [0.1.1]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.1
 [0.1.0]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.0
 [0.0.9]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.9
