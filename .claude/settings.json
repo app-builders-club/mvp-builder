@@ -27,7 +27,8 @@
       "Skill(code-analyzer)",
       "Skill(figma-design-extraction)",
       "Skill(figma-design-generate)",
-      "Skill(frontend-playwright)"
+      "Skill(frontend-playwright)",
+      "Skill(xcode)"
     ],
     "deny": [
       "Read(./.env)",
@@ -61,7 +62,8 @@
     "context7",
     "sequential-thinking",
     "playwright",
-    "figma"
+    "figma",
+    "xcode"
   ],
   "enabledPlugins": {
     "pr-review-toolkit@claude-plugins-official": true,
