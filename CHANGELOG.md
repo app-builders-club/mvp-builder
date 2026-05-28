@@ -2,6 +2,20 @@
 
 All notable changes to MVP Builder will be documented in this file. The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.1.3] - 2026-05-28
+
+### Added
+
+**Skills**
+- `xcode` — drives Xcode/iOS toolchain via two surfaces: live-IDE bridge (xcode-cli + MCP, SourceKit/AppleScript to open workspace) and headless CLI (xcodebuild + xcrun simctl). Covers build/run/test, SwiftUI previews, simulator management, log capture, archives.
+- `xcode/references/cli.md` — verified xcodebuild + simctl flag patterns.
+
+**MCP**
+- `xcode` server (`xcrun mcpbridge`) added to `.mcp.json`.
+
+**Plugins**
+- `code-review@claude-plugins-official`, `security-guidance@claude-plugins-official` enabled in `settings.json`.
+
 ## [0.1.2] - 2026-05-27
 
 ### Changed
@@ -247,6 +261,7 @@ Full consistency audit of CLAUDE.md + all rules:
 - Skills Registry for automatic skill matching
 - Cross-platform installation scripts (bash, PowerShell)
 
+[0.1.3]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.3
 [0.1.2]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.2
 [0.1.1]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.1
 [0.1.0]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.0
