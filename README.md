@@ -53,13 +53,13 @@ In your project directory:
 **macOS, Linux, WSL:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/petbrains/mvp-builder/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/app-builders-club/mvp-builder/main/scripts/install.sh | bash
 ```
 
 **Windows PowerShell:**
 
 ```powershell
-irm https://raw.githubusercontent.com/petbrains/mvp-builder/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/app-builders-club/mvp-builder/main/scripts/install.ps1 | iex
 ```
 
 This installs:
@@ -234,15 +234,15 @@ ai-docs/
 
 ---
 
-## Part of Pet Brains
+## Part of App Builders Club
 
 `mvp-builder` is one of three open-source tools we ship for builders who code with AI:
 
 - **mvp-builder** — this repo. Document-Driven Development for Claude Code. Specs before code, TDD enforced, self-review catches stubs.
-- **[design-builder](https://github.com/petbrains/design-builder)** — production-grade UIs from Claude Code without the AI-slop look.
-- **[designlib-mcp](https://github.com/petbrains/designLib-mcp)** — the design-knowledge MCP that powers design-builder. Works standalone in any MCP client.
+- **[design-builder](https://github.com/app-builders-club/design-builder)** — production-grade UIs from Claude Code without the AI-slop look.
+- **[designlib-mcp](https://github.com/app-builders-club/designLib-mcp)** — the design-knowledge MCP that powers design-builder. Works standalone in any MCP client.
 
-Methodology and build films at [petbrains.dev](https://petbrains.dev) · YouTube [@petbrains](https://youtube.com/@petbrains)
+Methodology and build films at [app-builders.club](https://app-builders.club) · YouTube [@appbuildersclub](https://youtube.com/@appbuildersclub)
 
 ---
 
