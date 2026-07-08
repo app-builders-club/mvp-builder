@@ -261,16 +261,16 @@ Full consistency audit of CLAUDE.md + all rules:
 - Skills Registry for automatic skill matching
 - Cross-platform installation scripts (bash, PowerShell)
 
-[0.1.3]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.3
-[0.1.2]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.2
-[0.1.1]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.1
-[0.1.0]: https://github.com/petbrains/mvp-builder/releases/tag/v0.1.0
-[0.0.9]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.9
-[0.0.8]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.8
-[0.0.7]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.7
-[0.0.6]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.6
-[0.0.5]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.5
-[0.0.4]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.4
-[0.0.3]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.3
-[0.0.2]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.2
-[0.0.1]: https://github.com/petbrains/mvp-builder/releases/tag/v0.0.1
+[0.1.3]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.1.3
+[0.1.2]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.1.2
+[0.1.1]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.1.1
+[0.1.0]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.1.0
+[0.0.9]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.9
+[0.0.8]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.8
+[0.0.7]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.7
+[0.0.6]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.6
+[0.0.5]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.5
+[0.0.4]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.4
+[0.0.3]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.3
+[0.0.2]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.2
+[0.0.1]: https://github.com/app-builders-club/mvp-builder/releases/tag/v0.0.1
